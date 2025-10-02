@@ -39,11 +39,13 @@ public class MainLayout extends AppLayout {
     private void createDrawer() {
         RouterLink homeLink = new RouterLink("Home", HomeView.class);
         RouterLink dashboardLink = new RouterLink("Dashboard", DashboardView.class);
+        RouterLink graphLink = new RouterLink("Grafo Prodotti", GraphView.class);
         
         homeLink.addClassNames(LumoUtility.Padding.MEDIUM);
         dashboardLink.addClassNames(LumoUtility.Padding.MEDIUM);
+        graphLink.addClassNames(LumoUtility.Padding.MEDIUM);
 
-        VerticalLayout navigation = new VerticalLayout(homeLink, dashboardLink);
+        VerticalLayout navigation = new VerticalLayout(homeLink, dashboardLink, graphLink);
         navigation.setPadding(true);
         navigation.setSpacing(false);
 

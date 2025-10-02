@@ -7,6 +7,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @Service
 @Transactional(readOnly = true)
 public class ProductService {
@@ -19,6 +21,14 @@ public class ProductService {
 
     public Page<Product> findAll(Pageable pageable) {
         return productRepository.findAll(pageable);
+    }
+
+    public List<Product> findAll() {
+        return productRepository.findAll();
+    }
+
+    public List<Product> findByCategoryName(String category) {
+        return productRepository.findByCategory(category);
     }
 
     public Page<Product> search(String searchTerm, Pageable pageable) {

@@ -21,6 +21,7 @@ import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.data.binder.Binder;
 import com.vaadin.flow.data.binder.ValidationException;
+import com.vaadin.flow.data.provider.SortDirection;
 import com.vaadin.flow.data.value.ValueChangeMode;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
@@ -30,6 +31,9 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Route(value = "dashboard", layout = MainLayout.class)
 @PageTitle("Dashboard - Prodotti")
@@ -44,8 +48,9 @@ public class DashboardView extends VerticalLayout {
     private String currentSearchTerm = "";
     private String currentCategory = "";
     private int currentPage = 0;
-    private int pageSize = 20;
+    private int pageSize = 10;
     private int totalPages = 0;
+    private List<Sort.Order> currentSortOrders = new ArrayList<>();
 
     public DashboardView(ProductService productService) {
         this.productService = productService;
@@ -118,6 +123,31 @@ public class DashboardView extends VerticalLayout {
         }).setHeader("Azioni").setAutoWidth(true).setFlexGrow(0);
         
         grid.setSizeFull();
+        grid.setMultiSort(true); // Enable multi-column sorting
+        
+        // Add sort listener for server-side sorting
+        grid.addSortListener(event -> {
+            currentSortOrders.clear();
+            
+            // Convert Vaadin sort orders to Spring Data sort orders
+            event.getSortOrder().forEach(sortOrder -> {
+                String sortProperty = sortOrder.getSorted().getKey();
+                if (sortProperty != null) {
+                    Sort.Direction direction = sortOrder.getDirection() == SortDirection.ASCENDING 
+                        ? Sort.Direction.ASC 
+                        : Sort.Direction.DESC;
+                    currentSortOrders.add(new Sort.Order(direction, sortProperty));
+                }
+            });
+            
+            // If no sort specified, default to ID ascending
+            if (currentSortOrders.isEmpty()) {
+                currentSortOrders.add(new Sort.Order(Sort.Direction.ASC, "id"));
+            }
+            
+            currentPage = 0; // Reset to first page on sort change
+            loadProducts();
+        });
         
         // Setup pagination
         setupPagination();
@@ -135,7 +165,12 @@ public class DashboardView extends VerticalLayout {
     }
     
     private void loadProducts() {
-        PageRequest pageRequest = PageRequest.of(currentPage, pageSize, Sort.by(Sort.Direction.ASC, "id"));
+        // Create sort from current sort orders, default to ID if none specified
+        Sort sort = currentSortOrders.isEmpty() 
+            ? Sort.by(Sort.Direction.ASC, "id")
+            : Sort.by(currentSortOrders);
+            
+        PageRequest pageRequest = PageRequest.of(currentPage, pageSize, s1ort);
         
         org.springframework.data.domain.Page<Product> resultPage;
         
