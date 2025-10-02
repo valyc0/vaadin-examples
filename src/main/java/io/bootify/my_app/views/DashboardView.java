@@ -170,7 +170,7 @@ public class DashboardView extends VerticalLayout {
             ? Sort.by(Sort.Direction.ASC, "id")
             : Sort.by(currentSortOrders);
             
-        PageRequest pageRequest = PageRequest.of(currentPage, pageSize, s1ort);
+        PageRequest pageRequest = PageRequest.of(currentPage, pageSize, sort);
         
         org.springframework.data.domain.Page<Product> resultPage;
         
