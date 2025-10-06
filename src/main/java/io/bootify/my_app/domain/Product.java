@@ -33,6 +33,26 @@ public class Product {
     @Column(nullable = false)
     private OffsetDateTime lastUpdated;
 
+    // File upload fields
+    @Column
+    private String fileName;
+
+    @Column
+    private String fileType;
+
+    @Column
+    private Long fileSize;
+
+    @Lob
+    @Column(name = "file_data", columnDefinition = "BLOB")
+    private byte[] fileData;
+
+    @Column(columnDefinition = "TEXT")
+    private String metadata;
+
+    @Column
+    private String uploadedBy;
+
     @PrePersist
     public void prePersist() {
         dateCreated = OffsetDateTime.now();
@@ -107,5 +127,70 @@ public class Product {
 
     public void setLastUpdated(OffsetDateTime lastUpdated) {
         this.lastUpdated = lastUpdated;
+    }
+
+    public String getFileName() {
+        return fileName;
+    }
+
+    public void setFileName(String fileName) {
+        this.fileName = fileName;
+    }
+
+    public String getFileType() {
+        return fileType;
+    }
+
+    public void setFileType(String fileType) {
+        this.fileType = fileType;
+    }
+
+    public Long getFileSize() {
+        return fileSize;
+    }
+
+    public void setFileSize(Long fileSize) {
+        this.fileSize = fileSize;
+    }
+
+    public byte[] getFileData() {
+        return fileData;
+    }
+
+    public void setFileData(byte[] fileData) {
+        this.fileData = fileData;
+    }
+
+    public String getMetadata() {
+        return metadata;
+    }
+
+    public void setMetadata(String metadata) {
+        this.metadata = metadata;
+    }
+
+    public String getUploadedBy() {
+        return uploadedBy;
+    }
+
+    public void setUploadedBy(String uploadedBy) {
+        this.uploadedBy = uploadedBy;
+    }
+
+    public String getFormattedFileSize() {
+        if (fileSize == null || fileSize == 0) {
+            return "N/A";
+        }
+        if (fileSize < 1024) {
+            return fileSize + " B";
+        } else if (fileSize < 1024 * 1024) {
+            return String.format("%.2f KB", fileSize / 1024.0);
+        } else {
+            return String.format("%.2f MB", fileSize / (1024.0 * 1024.0));
+        }
+    }
+
+    public boolean hasFile() {
+        return fileData != null && fileData.length > 0;
     }
 }

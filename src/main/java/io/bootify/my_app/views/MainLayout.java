@@ -40,12 +40,14 @@ public class MainLayout extends AppLayout {
         RouterLink homeLink = new RouterLink("Home", HomeView.class);
         RouterLink dashboardLink = new RouterLink("Dashboard", DashboardView.class);
         RouterLink graphLink = new RouterLink("Grafo Prodotti", GraphView.class);
+        RouterLink prodottiLink = new RouterLink("Gestione Prodotti", ProdottoManagementView.class);
         
         homeLink.addClassNames(LumoUtility.Padding.MEDIUM);
         dashboardLink.addClassNames(LumoUtility.Padding.MEDIUM);
         graphLink.addClassNames(LumoUtility.Padding.MEDIUM);
+        prodottiLink.addClassNames(LumoUtility.Padding.MEDIUM);
 
-        VerticalLayout navigation = new VerticalLayout(homeLink, dashboardLink, graphLink);
+        VerticalLayout navigation = new VerticalLayout(homeLink, dashboardLink, graphLink, prodottiLink);
         navigation.setPadding(true);
         navigation.setSpacing(false);
 
