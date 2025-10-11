@@ -34,8 +34,26 @@ public class FileUploadService {
         return fileUploadRepository.findByFileNameContainingIgnoreCaseOrderByUploadDateDesc(fileName);
     }
 
+    public List<FileUpload> findByCategory(String category) {
+        return fileUploadRepository.findByCategoryOrderByUploadDateDesc(category);
+    }
+
+    public List<FileUpload> findByStatus(String status) {
+        return fileUploadRepository.findByStatusOrderByUploadDateDesc(status);
+    }
+
     public FileUpload save(FileUpload fileUpload) {
         return fileUploadRepository.save(fileUpload);
+    }
+
+    public FileUpload updateStatus(Long id, String status) {
+        Optional<FileUpload> fileOpt = fileUploadRepository.findById(id);
+        if (fileOpt.isPresent()) {
+            FileUpload file = fileOpt.get();
+            file.setStatus(status);
+            return fileUploadRepository.save(file);
+        }
+        return null;
     }
 
     public void delete(Long id) {

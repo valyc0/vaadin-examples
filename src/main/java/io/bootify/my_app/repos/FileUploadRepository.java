@@ -14,4 +14,8 @@ public interface FileUploadRepository extends JpaRepository<FileUpload, Long> {
     List<FileUpload> findAllByOrderByUploadDateDesc();
     
     List<FileUpload> findByFileNameContainingIgnoreCaseOrderByUploadDateDesc(String fileName);
+    
+    List<FileUpload> findByCategoryOrderByUploadDateDesc(String category);
+    
+    List<FileUpload> findByStatusOrderByUploadDateDesc(String status);
 }
