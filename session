@@ -1,0 +1,113 @@
+versione aggiornata di SecurityUtils con l'aggiunta di un metodo per cancellare completamente la sessione Vaadin (non solo pulire gli attributi, ma chiudere la sessione), utile ad esempio al logout:
+import com.vaadin.flow.server.VaadinSession;
+
+import java.util.Collections;
+import java.util.List;
+
+public class SecurityUtils {
+
+    private static final String SESSION_USERNAME = "username";
+    private static final String SESSION_ROLES = "roles";
+    private static final String SESSION_PERMISSIONS = "permissions";
+
+    /**
+     * Salva username, ruoli e permessi nella VaadinSession.
+     * @param username nome utente
+     * @param roles lista di ruoli (es. ROLE_ADMIN, ROLE_USER)
+     * @param permissions lista di permessi (es. CAN_EDIT, CAN_DELETE)
+     */
+    public static void storeUserInSession(String username, List<String> roles, List<String> permissions) {
+        VaadinSession session = VaadinSession.getCurrent();
+
+        session.setAttribute(SESSION_USERNAME, username);
+        session.setAttribute(SESSION_ROLES, roles != null ? roles : Collections.emptyList());
+        session.setAttribute(SESSION_PERMISSIONS, permissions != null ? permissions : Collections.emptyList());
+    }
+
+    /**
+     * Recupera username dalla sessione
+     * @return username oppure null se non presente
+     */
+    public static String getUsername() {
+        return (String) VaadinSession.getCurrent().getAttribute(SESSION_USERNAME);
+    }
+
+    /**
+     * Recupera lista di ruoli dalla sessione
+     * @return lista ruoli, mai null (empty se non presente)
+     */
+    @SuppressWarnings("unchecked")
+    public static List<String> getRoles() {
+        List<String> roles = (List<String>) VaadinSession.getCurrent().getAttribute(SESSION_ROLES);
+        return roles != null ? roles : Collections.emptyList();
+    }
+
+    /**
+     * Recupera lista di permessi dalla sessione
+     * @return lista permessi, mai null (empty se non presente)
+     */
+    @SuppressWarnings("unchecked")
+    public static List<String> getPermissions() {
+        List<String> permissions = (List<String>) VaadinSession.getCurrent().getAttribute(SESSION_PERMISSIONS);
+        return permissions != null ? permissions : Collections.emptyList();
+    }
+
+    /**
+     * Controlla se l'utente ha un determinato ruolo.
+     * @param role ruolo da verificare (es. ROLE_ADMIN)
+     * @return true se il ruolo è presente nella sessione
+     */
+    public static boolean hasRole(String role) {
+        if (role == null || role.isEmpty()) {
+            return false;
+        }
+        return getRoles().stream()
+                .anyMatch(r -> r.equalsIgnoreCase(role));
+    }
+
+    /**
+     * Controlla se l'utente ha un determinato permesso.
+     * @param permission permesso da verificare (es. CAN_EDIT)
+     * @return true se il permesso è presente nella sessione
+     */
+    public static boolean hasPermission(String permission) {
+        if (permission == null || permission.isEmpty()) {
+            return false;
+        }
+        return getPermissions().stream()
+                .anyMatch(p -> p.equalsIgnoreCase(permission));
+    }
+
+    /**
+     * Pulisce le info utente dalla sessione (es. logout)
+     */
+    public static void clearUserInfoFromSession() {
+        VaadinSession session = VaadinSession.getCurrent();
+        session.setAttribute(SESSION_USERNAME, null);
+        session.setAttribute(SESSION_ROLES, null);
+        session.setAttribute(SESSION_PERMISSIONS, null);
+    }
+
+    /**
+     * Chiude la sessione Vaadin attuale e rimuove tutti i dati di sessione.
+     * Utile per logout completo.
+     */
+    public static void invalidateSession() {
+        VaadinSession session = VaadinSession.getCurrent();
+        if (session != null) {
+            session.close();  // chiude e invalida la sessione
+        }
+    }
+}
+Come usarlo:
+Per rimuovere solo dati utente (es. logout parziale):
+SecurityUtils.clearUserInfoFromSession();
+Per chiudere completamente la sessione Vaadin (es. logout completo):
+SecurityUtils.invalidateSession();
+Se vuoi, ti posso mostrare anche come integrare questa invalidazione con Spring Security logout. Fammi sapere!
+
+
+
+Allega
+
+Cerca
