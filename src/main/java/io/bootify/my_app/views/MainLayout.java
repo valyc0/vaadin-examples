@@ -42,14 +42,16 @@ public class MainLayout extends AppLayout {
         RouterLink graphLink = new RouterLink("Grafo Prodotti", GraphView.class);
         RouterLink prodottiLink = new RouterLink("Gestione Prodotti", ProdottoManagementView.class);
         RouterLink filesLink = new RouterLink("Gestione File Avanzata", EnhancedFileManagementView.class);
+        RouterLink fileDetailLink = new RouterLink("Dettaglio File", FileDetailView.class);
         
         homeLink.addClassNames(LumoUtility.Padding.MEDIUM);
         dashboardLink.addClassNames(LumoUtility.Padding.MEDIUM);
         graphLink.addClassNames(LumoUtility.Padding.MEDIUM);
         prodottiLink.addClassNames(LumoUtility.Padding.MEDIUM);
         filesLink.addClassNames(LumoUtility.Padding.MEDIUM);
+        fileDetailLink.addClassNames(LumoUtility.Padding.MEDIUM);
 
-        VerticalLayout navigation = new VerticalLayout(homeLink, dashboardLink, graphLink, prodottiLink, filesLink);
+        VerticalLayout navigation = new VerticalLayout(homeLink, dashboardLink, graphLink, prodottiLink, filesLink, fileDetailLink);
         navigation.setPadding(true);
         navigation.setSpacing(false);
 

@@ -42,6 +42,20 @@ public class FileUpload {
     @Column
     private String status;
 
+    @Lob
+    @Column(name = "trascrizione", columnDefinition = "TEXT")
+    private String trascrizione;
+
+    @Lob
+    @Column(name = "traduzione", columnDefinition = "TEXT")
+    private String traduzione;
+
+    @Column(name = "etag")
+    private String etag;
+
+    @Column(name = "unique_file_name")
+    private String uniqueFileName;
+
     // Constructors
     public FileUpload() {
         this.uploadDate = LocalDateTime.now();
@@ -154,5 +168,37 @@ public class FileUpload {
         } else {
             return String.format("%.2f MB", fileSize / (1024.0 * 1024.0));
         }
+    }
+
+    public String getTrascrizione() {
+        return trascrizione;
+    }
+
+    public void setTrascrizione(String trascrizione) {
+        this.trascrizione = trascrizione;
+    }
+
+    public String getTraduzione() {
+        return traduzione;
+    }
+
+    public void setTraduzione(String traduzione) {
+        this.traduzione = traduzione;
+    }
+
+    public String getEtag() {
+        return etag;
+    }
+
+    public void setEtag(String etag) {
+        this.etag = etag;
+    }
+
+    public String getUniqueFileName() {
+        return uniqueFileName;
+    }
+
+    public void setUniqueFileName(String uniqueFileName) {
+        this.uniqueFileName = uniqueFileName;
     }
 }
