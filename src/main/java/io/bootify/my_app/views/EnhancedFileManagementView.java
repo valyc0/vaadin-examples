@@ -28,11 +28,13 @@ import com.vaadin.flow.data.renderer.ComponentRenderer;
 import com.vaadin.flow.data.value.ValueChangeMode;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
+import com.vaadin.flow.server.StreamResource;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import io.bootify.my_app.domain.FileUpload;
 import io.bootify.my_app.service.FileUploadService;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.format.DateTimeFormatter;
@@ -452,6 +454,17 @@ public class EnhancedFileManagementView extends VerticalLayout {
     }
 
     private Component createActionsLayout(FileUpload file) {
+        Button downloadButton = new Button(new Icon(VaadinIcon.DOWNLOAD));
+        downloadButton.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_TERTIARY);
+        downloadButton.setTooltipText("Scarica");
+        
+        // Create download anchor
+        com.vaadin.flow.component.html.Anchor downloadLink = new com.vaadin.flow.component.html.Anchor();
+        downloadLink.getElement().setAttribute("download", true);
+        downloadLink.setHref(createStreamResource(file));
+        downloadLink.getStyle().set("text-decoration", "none");
+        downloadLink.add(downloadButton);
+        
         Button deleteButton = new Button(new Icon(VaadinIcon.TRASH));
         deleteButton.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_ERROR);
         deleteButton.setTooltipText("Cancella");
@@ -468,7 +481,7 @@ public class EnhancedFileManagementView extends VerticalLayout {
         approveButton.addClickListener(e -> approveFile(file));
         approveButton.setEnabled(!"APPROVED".equals(file.getStatus()));
 
-        HorizontalLayout actions = new HorizontalLayout(deleteButton, editButton, approveButton);
+        HorizontalLayout actions = new HorizontalLayout(downloadLink, deleteButton, editButton, approveButton);
         actions.setSpacing(false);
         return actions;
     }
@@ -656,6 +669,16 @@ public class EnhancedFileManagementView extends VerticalLayout {
         statusFilter.clear();
         ownerFilter.clear();
         refreshGrid();
+    }
+
+    private StreamResource createStreamResource(FileUpload file) {
+        return new StreamResource(file.getFileName(), () -> {
+            byte[] data = file.getFileData();
+            if (data == null) {
+                data = new byte[0];
+            }
+            return new ByteArrayInputStream(data);
+        });
     }
 
     private void refreshGrid() {
