@@ -38,18 +38,27 @@ public class GenericPaginatedGrid<T> extends VerticalLayout {
         grid.setSizeFull();
         grid.setMultiSort(true);
         grid.addSortListener(event -> {
-            currentSortOrders.clear();
-            event.getSortOrder().forEach(sortOrder -> {
-                String property = sortOrder.getSorted().getKey();
-                if (property != null) {
-                    Sort.Direction direction = sortOrder.getDirection() == SortDirection.ASCENDING
-                            ? Sort.Direction.ASC
-                            : Sort.Direction.DESC;
-                    currentSortOrders.add(new Sort.Order(direction, property));
+            try {
+                currentSortOrders.clear();
+                if (event.getSortOrder() != null && !event.getSortOrder().isEmpty()) {
+                    event.getSortOrder().forEach(sortOrder -> {
+                        if (sortOrder != null && sortOrder.getSorted() != null) {
+                            String property = sortOrder.getSorted().getKey();
+                            if (property != null && !property.isEmpty()) {
+                                Sort.Direction direction = sortOrder.getDirection() == SortDirection.ASCENDING
+                                        ? Sort.Direction.ASC
+                                        : Sort.Direction.DESC;
+                                currentSortOrders.add(new Sort.Order(direction, property));
+                            }
+                        }
+                    });
                 }
-            });
-            currentPage = 0;
-            loadData();
+                currentPage = 0;
+                loadData();
+            } catch (Exception e) {
+                // Log error but don't crash
+                System.err.println("Error handling sort event: " + e.getMessage());
+            }
         });
 
         // Layout filtri
@@ -83,11 +92,16 @@ public class GenericPaginatedGrid<T> extends VerticalLayout {
     public void setPageSize(int pageSize) {
         this.pageSize = pageSize;
     }
+    
+    public void setDefaultSort(String property, Sort.Direction direction) {
+        currentSortOrders.clear();
+        currentSortOrders.add(new Sort.Order(direction, property));
+    }
 
     private void loadData() {
         if (dataProvider == null) return;
 
-        Sort sort = currentSortOrders.isEmpty() ? Sort.by("id") : Sort.by(currentSortOrders);
+        Sort sort = currentSortOrders.isEmpty() ? Sort.unsorted() : Sort.by(currentSortOrders);
         PageRequest pageRequest = PageRequest.of(currentPage, pageSize, sort);
 
         org.springframework.data.domain.Page<T> resultPage = dataProvider.apply(pageRequest, currentSortOrders, filterText);

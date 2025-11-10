@@ -98,6 +98,9 @@ public class GenericGridView extends VerticalLayout {
                 return productService.findAll(pageable);
             }
         });
+        
+        // Imposta ordinamento di default lato server per ID ascendente
+        productGrid.setDefaultSort("id", org.springframework.data.domain.Sort.Direction.ASC);
 
         // Ricarica grid quando cambiano filtri
         searchField.addValueChangeListener(e -> {
@@ -130,13 +133,13 @@ public class GenericGridView extends VerticalLayout {
     }
     
     private void configureGrid() {
-        productGrid.getGrid().addColumn(Product::getId).setHeader("ID").setSortable(true);
-        productGrid.getGrid().addColumn(Product::getName).setHeader("Nome").setSortable(true);
-        productGrid.getGrid().addColumn(Product::getCategory).setHeader("Categoria").setSortable(true);
+        productGrid.getGrid().addColumn(Product::getId).setHeader("ID").setSortable(true).setKey("id");
+        productGrid.getGrid().addColumn(Product::getName).setHeader("Nome").setSortable(true).setKey("name");
+        productGrid.getGrid().addColumn(Product::getCategory).setHeader("Categoria").setSortable(true).setKey("category");
         productGrid.getGrid().addColumn(product -> String.format("€ %.2f", product.getPrice()))
-                .setHeader("Prezzo").setSortable(true);
-        productGrid.getGrid().addColumn(Product::getQuantity).setHeader("Qtà").setSortable(true);
-        productGrid.getGrid().addColumn(Product::getDescription).setHeader("Descrizione");
+                .setHeader("Prezzo").setSortable(true).setKey("price");
+        productGrid.getGrid().addColumn(Product::getQuantity).setHeader("Qtà").setSortable(true).setKey("quantity");
+        productGrid.getGrid().addColumn(Product::getDescription).setHeader("Descrizione").setKey("description");
         
         // Colonna azioni
         productGrid.getGrid().addColumn(new ComponentRenderer<>(this::createActionsLayout))
