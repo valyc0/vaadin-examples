@@ -43,6 +43,7 @@ public class MainLayout extends AppLayout {
         RouterLink prodottiLink = new RouterLink("Gestione Prodotti", ProdottoManagementView.class);
         RouterLink filesLink = new RouterLink("Gestione File Avanzata", EnhancedFileManagementView.class);
         RouterLink fileDetailLink = new RouterLink("Dettaglio File", FileDetailView.class);
+        RouterLink genericGridLink = new RouterLink("Generic Grid", GenericGridView.class);
         
         homeLink.addClassNames(LumoUtility.Padding.MEDIUM);
         dashboardLink.addClassNames(LumoUtility.Padding.MEDIUM);
@@ -50,8 +51,9 @@ public class MainLayout extends AppLayout {
         prodottiLink.addClassNames(LumoUtility.Padding.MEDIUM);
         filesLink.addClassNames(LumoUtility.Padding.MEDIUM);
         fileDetailLink.addClassNames(LumoUtility.Padding.MEDIUM);
+        genericGridLink.addClassNames(LumoUtility.Padding.MEDIUM);
 
-        VerticalLayout navigation = new VerticalLayout(homeLink, dashboardLink, graphLink, prodottiLink, filesLink, fileDetailLink);
+        VerticalLayout navigation = new VerticalLayout(homeLink, dashboardLink, graphLink, prodottiLink, filesLink, fileDetailLink, genericGridLink);
         navigation.setPadding(true);
         navigation.setSpacing(false);
 
