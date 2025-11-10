@@ -41,6 +41,7 @@ public class GenericGridView extends VerticalLayout {
     private final ComboBox<String> categoryFilter = new ComboBox<>("Categoria");
     private final TextField searchField = new TextField();
     private final Span totalLabel = new Span();
+    private long cachedTotal = 0;
 
     public GenericGridView(@Autowired ProductService productService) {
         this.productService = productService;
@@ -88,29 +89,30 @@ public class GenericGridView extends VerticalLayout {
                     pageRequest.getPageSize(),
                     pageRequest.getSort());
 
+            org.springframework.data.domain.Page<Product> page;
             if (!searchTerm.isEmpty() && !category.isEmpty()) {
-                return productService.searchByCategory(category, searchTerm, pageable);
+                page = productService.searchByCategory(category, searchTerm, pageable);
             } else if (!searchTerm.isEmpty()) {
-                return productService.search(searchTerm, pageable);
+                page = productService.search(searchTerm, pageable);
             } else if (!category.isEmpty()) {
-                return productService.findByCategory(category, pageable);
+                page = productService.findByCategory(category, pageable);
             } else {
-                return productService.findAll(pageable);
+                page = productService.findAll(pageable);
             }
+            
+            // Cache il totale per evitare query duplicate
+            cachedTotal = page.getTotalElements();
+            updateTotalLabel();
+            
+            return page;
         });
         
         // Imposta ordinamento di default lato server per ID ascendente
         productGrid.setDefaultSort("id", org.springframework.data.domain.Sort.Direction.ASC);
 
         // Ricarica grid quando cambiano filtri
-        searchField.addValueChangeListener(e -> {
-            productGrid.refresh();
-            updateTotalLabel();
-        });
-        categoryFilter.addValueChangeListener(e -> {
-            productGrid.refresh();
-            updateTotalLabel();
-        });
+        searchField.addValueChangeListener(e -> productGrid.refresh());
+        categoryFilter.addValueChangeListener(e -> productGrid.refresh());
 
         // Layout finale
         add(title, totalLabel, toolbar, filterLayout, productGrid);
@@ -252,7 +254,6 @@ public class GenericGridView extends VerticalLayout {
     private void saveProduct(Product product) {
         productService.save(product);
         productGrid.refresh();
-        updateTotalLabel();
     }
     
     private void updateTotalLabel() {
@@ -260,19 +261,8 @@ public class GenericGridView extends VerticalLayout {
         String category = categoryFilter.getValue() != null && !"Tutti".equals(categoryFilter.getValue())
                 ? categoryFilter.getValue() : "";
         
-        long total;
-        if (!searchTerm.isEmpty() && !category.isEmpty()) {
-            total = productService.searchByCategory(category, searchTerm, PageRequest.of(0, 1)).getTotalElements();
-        } else if (!searchTerm.isEmpty()) {
-            total = productService.search(searchTerm, PageRequest.of(0, 1)).getTotalElements();
-        } else if (!category.isEmpty()) {
-            total = productService.findByCategory(category, PageRequest.of(0, 1)).getTotalElements();
-        } else {
-            total = productService.count();
-        }
-        
         String filterText = (!searchTerm.isEmpty() || !category.isEmpty()) ? " (filtrati)" : " totali";
-        totalLabel.setText(total + " prodott" + (total != 1 ? "i" : "o") + filterText);
+        totalLabel.setText(cachedTotal + " prodott" + (cachedTotal != 1 ? "i" : "o") + filterText);
     }
     
     private void confirmDelete(Product product) {
@@ -295,7 +285,6 @@ public class GenericGridView extends VerticalLayout {
         try {
             productService.delete(product.getId());
             productGrid.refresh();
-            updateTotalLabel();
             Notification.show("Prodotto eliminato con successo", 3000, Notification.Position.BOTTOM_START)
                     .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
         } catch (Exception e) {
