@@ -12,8 +12,8 @@ NC='\033[0m' # No Color
 echo -e "${BLUE}=== Backup Script per vaadin-examples ===${NC}"
 
 # Directory di backup
-BACKUP_DIR="/workspace/db-ready/backup"
-PROJECT_DIR="/workspace/db-ready/vaadin-examples"
+BACKUP_DIR="/home/valyc-pc/lavoro/backup"
+PROJECT_DIR="/home/valyc-pc/lavoro/vaadin-examples"
 
 # Crea directory di backup se non esiste
 if [ ! -d "$BACKUP_DIR" ]; then
