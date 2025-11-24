@@ -22,7 +22,10 @@ import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.component.treegrid.TreeGrid;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
+import io.bootify.my_app.dto.DocumentSearchFilterDTO;
 import io.bootify.my_app.model.TreeResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
@@ -30,11 +33,19 @@ import java.util.List;
 @PageTitle("Ricerca Documenti")
 public class SearchView extends VerticalLayout {
 
+    private static final Logger log = LoggerFactory.getLogger(SearchView.class);
+
     // ---------------- FILTRI ----------------
     private final TextField nomeFile = new TextField("Nome File");
     private final ComboBox<String> tipologia = new ComboBox<>("Tipologia");
     private final DatePicker dataDa = new DatePicker("Data Da");
     private final DatePicker dataA = new DatePicker("Data A");
+    private final TextField autore = new TextField("Autore/Creatore");
+    private final ComboBox<String> formato = new ComboBox<>("Formato File");
+    private final TextField dimensioneMin = new TextField("Dimensione Min (KB)");
+    private final TextField dimensioneMax = new TextField("Dimensione Max (KB)");
+    private final TextField titolo = new TextField("Titolo Documento");
+    private final TextField tags = new TextField("Tag/Parole chiave");
     private final TextField metaKey = new TextField("Metadato chiave");
     private final TextField metaValue = new TextField("Metadato valore");
 
@@ -120,11 +131,38 @@ public class SearchView extends VerticalLayout {
         dataA.setLocale(java.util.Locale.ITALY);
         dataA.addValueChangeListener(e -> validateDateRange());
         
-        metaKey.setPlaceholder("es: autore, categoria...");
+        // Configurazione campi metadati principali
+        autore.setPlaceholder("Nome autore o creatore...");
+        autore.setClearButtonVisible(true);
+        autore.setPrefixComponent(new Icon(VaadinIcon.USER));
+        
+        formato.setItems("PDF", "DOCX", "XLSX", "PPTX", "TXT", "CSV", "XML", "JSON", "ZIP", "RAR", "JPG", "PNG");
+        formato.setPlaceholder("Seleziona formato...");
+        formato.setClearButtonVisible(true);
+        
+        dimensioneMin.setPlaceholder("es: 100");
+        dimensioneMin.setClearButtonVisible(true);
+        dimensioneMin.setPrefixComponent(new Icon(VaadinIcon.ARROW_UP));
+        dimensioneMin.addValueChangeListener(e -> validateSizeRange());
+        
+        dimensioneMax.setPlaceholder("es: 5000");
+        dimensioneMax.setClearButtonVisible(true);
+        dimensioneMax.setPrefixComponent(new Icon(VaadinIcon.ARROW_DOWN));
+        dimensioneMax.addValueChangeListener(e -> validateSizeRange());
+        
+        titolo.setPlaceholder("Titolo del documento...");
+        titolo.setClearButtonVisible(true);
+        titolo.setPrefixComponent(new Icon(VaadinIcon.FILE_TEXT_O));
+        
+        tags.setPlaceholder("Separati da virgola: urgente, riservato...");
+        tags.setClearButtonVisible(true);
+        tags.setPrefixComponent(new Icon(VaadinIcon.TAGS));
+        
+        metaKey.setPlaceholder("es: categoria, progetto...");
         metaKey.setClearButtonVisible(true);
         metaKey.setPrefixComponent(new Icon(VaadinIcon.KEY));
         
-        metaValue.setPlaceholder("Valore del metadato...");
+        metaValue.setPlaceholder("Valore del metadato custom...");
         metaValue.setClearButtonVisible(true);
         metaValue.setPrefixComponent(new Icon(VaadinIcon.INPUT));
 
@@ -145,9 +183,35 @@ public class SearchView extends VerticalLayout {
         dataA.setWidth("calc(50% - 0.5rem)");
         dataA.getStyle().set("min-width", "200px").set("flex", "1");
 
-        FlexLayout metaRow = new FlexLayout(metaKey, metaValue);
-        metaRow.setWidthFull();
-        metaRow.getStyle().set("gap", "1rem").set("flex-wrap", "wrap");
+        // Layout metadati principali
+        FlexLayout metaRow1 = new FlexLayout(autore, formato);
+        metaRow1.setWidthFull();
+        metaRow1.getStyle().set("gap", "1rem").set("flex-wrap", "wrap");
+        autore.setWidth("calc(50% - 0.5rem)");
+        autore.getStyle().set("min-width", "200px").set("flex", "1");
+        formato.setWidth("calc(50% - 0.5rem)");
+        formato.getStyle().set("min-width", "200px").set("flex", "1");
+        
+        FlexLayout metaRow2 = new FlexLayout(dimensioneMin, dimensioneMax);
+        metaRow2.setWidthFull();
+        metaRow2.getStyle().set("gap", "1rem").set("flex-wrap", "wrap");
+        dimensioneMin.setWidth("calc(50% - 0.5rem)");
+        dimensioneMin.getStyle().set("min-width", "200px").set("flex", "1");
+        dimensioneMax.setWidth("calc(50% - 0.5rem)");
+        dimensioneMax.getStyle().set("min-width", "200px").set("flex", "1");
+        
+        FlexLayout metaRow3 = new FlexLayout(titolo, tags);
+        metaRow3.setWidthFull();
+        metaRow3.getStyle().set("gap", "1rem").set("flex-wrap", "wrap");
+        titolo.setWidth("calc(50% - 0.5rem)");
+        titolo.getStyle().set("min-width", "200px").set("flex", "1");
+        tags.setWidth("calc(50% - 0.5rem)");
+        tags.getStyle().set("min-width", "200px").set("flex", "1");
+        
+        // Layout metadati custom
+        FlexLayout metaRow4 = new FlexLayout(metaKey, metaValue);
+        metaRow4.setWidthFull();
+        metaRow4.getStyle().set("gap", "1rem").set("flex-wrap", "wrap");
         metaKey.setWidth("calc(50% - 0.5rem)");
         metaKey.getStyle().set("min-width", "200px").set("flex", "1");
         metaValue.setWidth("calc(50% - 0.5rem)");
@@ -159,8 +223,9 @@ public class SearchView extends VerticalLayout {
         generalFiltersDetails.setContent(generalLayout);
         generalFiltersDetails.setOpened(true);
 
-        VerticalLayout metaLayout = new VerticalLayout(metaRow);
+        VerticalLayout metaLayout = new VerticalLayout(metaRow1, metaRow2, metaRow3, metaRow4);
         metaLayout.setPadding(true);
+        metaLayout.setSpacing(true);
         metadataFiltersDetails.setSummaryText("Filtri Metadati");
         metadataFiltersDetails.setContent(metaLayout);
         metadataFiltersDetails.setOpened(false);
@@ -234,9 +299,22 @@ public class SearchView extends VerticalLayout {
     }
 
     private void performSearch() {
-        if (!validateDateRange()) {
+        if (!validateDateRange() || !validateSizeRange()) {
             return;
         }
+        
+        // Costruisce l'oggetto DTO con tutti i filtri
+        DocumentSearchFilterDTO searchFilter = buildSearchFilter();
+        
+        // Log dell'oggetto per il test (in produzione sarà passato al service)
+        log.info("=== RICERCA DOCUMENTI ===");
+        log.info("Filtri di ricerca: {}", searchFilter);
+        log.info("========================");
+        
+        // TODO: In produzione chiamare il service
+        // List<FileResultDTO> results = documentService.searchDocuments(searchFilter);
+        
+        // 
         
         // Mostra riepilogo filtri come badge
         filtersSummary.removeAll();
@@ -248,6 +326,16 @@ public class SearchView extends VerticalLayout {
         if (dataA.getValue() != null) {
             addFilterBadge("Data A", dataA.getValue().toString());
         }
+        addFilterBadge("Autore", autore.getValue());
+        addFilterBadge("Formato", formato.getValue());
+        if (dimensioneMin.getValue() != null && !dimensioneMin.getValue().isEmpty()) {
+            addFilterBadge("Dim. Min", dimensioneMin.getValue() + " KB");
+        }
+        if (dimensioneMax.getValue() != null && !dimensioneMax.getValue().isEmpty()) {
+            addFilterBadge("Dim. Max", dimensioneMax.getValue() + " KB");
+        }
+        addFilterBadge("Titolo", titolo.getValue());
+        addFilterBadge("Tags", tags.getValue());
         if (metaKey.getValue() != null && !metaKey.getValue().isEmpty() && 
             metaValue.getValue() != null && !metaValue.getValue().isEmpty()) {
             addFilterBadge(metaKey.getValue(), metaValue.getValue());
@@ -290,6 +378,52 @@ public class SearchView extends VerticalLayout {
         );
         notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
     }
+    
+    private DocumentSearchFilterDTO buildSearchFilter() {
+        DocumentSearchFilterDTO filter = new DocumentSearchFilterDTO();
+        
+        // Filtri generali
+        filter.setNomeFile(nomeFile.getValue());
+        filter.setTipologia(tipologia.getValue());
+        filter.setDataDa(dataDa.getValue());
+        filter.setDataA(dataA.getValue());
+        
+        // Filtri metadati
+        filter.setAutore(autore.getValue());
+        filter.setFormato(formato.getValue());
+        
+        // Dimensioni con parsing
+        String minStr = dimensioneMin.getValue();
+        String maxStr = dimensioneMax.getValue();
+        if (minStr != null && !minStr.isEmpty()) {
+            try {
+                filter.setDimensioneMinKB(Double.parseDouble(minStr));
+            } catch (NumberFormatException e) {
+                log.warn("Valore dimensione minima non valido: {}", minStr);
+            }
+        }
+        if (maxStr != null && !maxStr.isEmpty()) {
+            try {
+                filter.setDimensioneMaxKB(Double.parseDouble(maxStr));
+            } catch (NumberFormatException e) {
+                log.warn("Valore dimensione massima non valido: {}", maxStr);
+            }
+        }
+        
+        filter.setTitolo(titolo.getValue());
+        filter.setTags(tags.getValue());
+        filter.setMetadataChiave(metaKey.getValue());
+        filter.setMetadataValore(metaValue.getValue());
+        
+        // Filtro strutturato (tree)
+        if (selectedTreeItem != null) {
+            filter.setStrutturaCode(selectedTreeItem.getCode());
+            filter.setStrutturaType(selectedTreeItem.getType());
+            filter.setStrutturaDescrizione(selectedTreeItem.getDescrizione());
+        }
+        
+        return filter;
+    }
 
     private void showFilters() {
         generalFiltersDetails.setVisible(true);
@@ -307,6 +441,12 @@ public class SearchView extends VerticalLayout {
         tipologia.clear();
         dataDa.clear();
         dataA.clear();
+        autore.clear();
+        formato.clear();
+        dimensioneMin.clear();
+        dimensioneMax.clear();
+        titolo.clear();
+        tags.clear();
         metaKey.clear();
         metaValue.clear();
         selectedTreeItem = null;
@@ -331,6 +471,62 @@ public class SearchView extends VerticalLayout {
         }
         dataDa.setInvalid(false);
         dataA.setInvalid(false);
+        return true;
+    }
+    
+    private boolean validateSizeRange() {
+        String minStr = dimensioneMin.getValue();
+        String maxStr = dimensioneMax.getValue();
+        
+        if ((minStr != null && !minStr.isEmpty()) || (maxStr != null && !maxStr.isEmpty())) {
+            try {
+                Double min = (minStr != null && !minStr.isEmpty()) ? Double.parseDouble(minStr) : null;
+                Double max = (maxStr != null && !maxStr.isEmpty()) ? Double.parseDouble(maxStr) : null;
+                
+                if (min != null && min < 0) {
+                    dimensioneMin.setInvalid(true);
+                    dimensioneMin.setErrorMessage("Valore non valido");
+                    return false;
+                }
+                if (max != null && max < 0) {
+                    dimensioneMax.setInvalid(true);
+                    dimensioneMax.setErrorMessage("Valore non valido");
+                    return false;
+                }
+                
+                if (min != null && max != null && min > max) {
+                    Notification notification = Notification.show(
+                        "La dimensione minima non può essere maggiore della massima",
+                        4000,
+                        Notification.Position.MIDDLE
+                    );
+                    notification.addThemeVariants(NotificationVariant.LUMO_ERROR);
+                    dimensioneMin.setInvalid(true);
+                    dimensioneMax.setInvalid(true);
+                    return false;
+                }
+                
+            } catch (NumberFormatException e) {
+                Notification notification = Notification.show(
+                    "Inserire valori numerici validi per la dimensione",
+                    4000,
+                    Notification.Position.MIDDLE
+                );
+                notification.addThemeVariants(NotificationVariant.LUMO_ERROR);
+                if (minStr != null && !minStr.isEmpty()) {
+                    dimensioneMin.setInvalid(true);
+                    dimensioneMin.setErrorMessage("Numero non valido");
+                }
+                if (maxStr != null && !maxStr.isEmpty()) {
+                    dimensioneMax.setInvalid(true);
+                    dimensioneMax.setErrorMessage("Numero non valido");
+                }
+                return false;
+            }
+        }
+        
+        dimensioneMin.setInvalid(false);
+        dimensioneMax.setInvalid(false);
         return true;
     }
     
