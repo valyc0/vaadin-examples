@@ -2,6 +2,9 @@ package io.bootify.my_app.domain;
 
 import jakarta.persistence.*;
 import java.time.OffsetDateTime;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Entity
 @Table(name = "users")
@@ -29,9 +32,13 @@ public class User {
     @Column(length = 100)
     private String department;
 
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "profile_id")
-    private Profile profile;
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(
+        name = "user_profiles",
+        joinColumns = @JoinColumn(name = "user_id"),
+        inverseJoinColumns = @JoinColumn(name = "profile_id")
+    )
+    private Set<Profile> profiles = new HashSet<>();
 
     @Column(nullable = false)
     private Boolean active = true;
@@ -116,12 +123,12 @@ public class User {
         this.department = department;
     }
 
-    public Profile getProfile() {
-        return profile;
+    public Set<Profile> getProfiles() {
+        return profiles;
     }
 
-    public void setProfile(Profile profile) {
-        this.profile = profile;
+    public void setProfiles(Set<Profile> profiles) {
+        this.profiles = profiles;
     }
 
     public Boolean getActive() {
@@ -168,7 +175,17 @@ public class User {
         return firstName + " " + lastName;
     }
 
-    public String getProfileName() {
-        return profile != null ? profile.getName() : "Nessun profilo";
+    public String getProfileNames() {
+        if (profiles == null || profiles.isEmpty()) {
+            return "Nessun profilo";
+        }
+        return profiles.stream()
+                .map(Profile::getName)
+                .sorted()
+                .collect(Collectors.joining(", "));
+    }
+
+    public int getProfileCount() {
+        return profiles != null ? profiles.size() : 0;
     }
 }

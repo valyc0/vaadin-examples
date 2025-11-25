@@ -237,19 +237,32 @@ public class UserManagementView extends VerticalLayout {
                 .setHeader("Dipartimento")
                 .setAutoWidth(true);
 
-        // Profile with badge
+        // Profile with badges (multiple)
         userGrid.addColumn(new ComponentRenderer<>(user -> {
-            if (user.getProfile() != null) {
-                Span badge = new Span(user.getProfile().getName());
-                badge.getElement().getThemeList().add("badge");
-                badge.getStyle()
-                        .set("background", "var(--lumo-primary-color-10pct)")
-                        .set("color", "var(--lumo-primary-text-color)")
-                        .set("padding", "var(--lumo-space-xs) var(--lumo-space-s)")
-                        .set("border-radius", "var(--lumo-border-radius-m)")
-                        .set("font-size", "var(--lumo-font-size-s)")
-                        .set("font-weight", "500");
-                return badge;
+            if (user.getProfiles() != null && !user.getProfiles().isEmpty()) {
+                HorizontalLayout badgesLayout = new HorizontalLayout();
+                badgesLayout.setSpacing(true);
+                badgesLayout.getStyle()
+                        .set("flex-wrap", "wrap")
+                        .set("gap", "var(--lumo-space-xs)");
+                
+                user.getProfiles().stream()
+                        .sorted((p1, p2) -> p1.getName().compareTo(p2.getName()))
+                        .forEach(profile -> {
+                            Span badge = new Span(profile.getName());
+                            badge.getElement().getThemeList().add("badge");
+                            badge.getStyle()
+                                    .set("background", "var(--lumo-primary-color-10pct)")
+                                    .set("color", "var(--lumo-primary-text-color)")
+                                    .set("padding", "var(--lumo-space-xs) var(--lumo-space-s)")
+                                    .set("border-radius", "var(--lumo-border-radius-m)")
+                                    .set("font-size", "var(--lumo-font-size-xs)")
+                                    .set("font-weight", "500")
+                                    .set("white-space", "nowrap");
+                            badgesLayout.add(badge);
+                        });
+                
+                return badgesLayout;
             }
             Span noprofile = new Span("Nessun profilo");
             noprofile.getStyle()
@@ -257,8 +270,9 @@ public class UserManagementView extends VerticalLayout {
                     .set("font-size", "var(--lumo-font-size-s)");
             return noprofile;
         }))
-                .setHeader("Profilo")
-                .setAutoWidth(true);
+                .setHeader("Profili")
+                .setAutoWidth(true)
+                .setFlexGrow(1);
 
         // Date created
         userGrid.addColumn(user -> user.getDateCreated() != null ? user.getDateCreated().format(DATE_FORMATTER) : "—")
@@ -465,7 +479,7 @@ public class UserManagementView extends VerticalLayout {
     }
 
     private void openUserDialog(User user) {
-        UserFormDialog dialog = new UserFormDialog(user, userService, profileService, savedUser -> {
+        UserFormDialog dialog = new UserFormDialog(user, userService, profileService, permissionService, savedUser -> {
             refreshUserGrid();
         });
         dialog.open();

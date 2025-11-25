@@ -32,7 +32,7 @@ public class Profile {
     @JoinTable(name = "profile_permissions", joinColumns = @JoinColumn(name = "profile_id"), inverseJoinColumns = @JoinColumn(name = "permission_id"))
     private Set<Permission> permissions = new HashSet<>();
 
-    @OneToMany(mappedBy = "profile")
+    @ManyToMany(mappedBy = "profiles")
     private Set<User> users = new HashSet<>();
 
     @PrePersist

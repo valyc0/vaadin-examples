@@ -3,7 +3,7 @@ package io.bootify.my_app.views;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.checkbox.Checkbox;
-import com.vaadin.flow.component.combobox.ComboBox;
+import com.vaadin.flow.component.combobox.MultiSelectComboBox;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.html.Div;
@@ -25,6 +25,7 @@ import com.vaadin.flow.data.validator.EmailValidator;
 import com.vaadin.flow.data.validator.StringLengthValidator;
 import io.bootify.my_app.domain.Profile;
 import io.bootify.my_app.domain.User;
+import io.bootify.my_app.service.PermissionService;
 import io.bootify.my_app.service.ProfileService;
 import io.bootify.my_app.service.UserService;
 
@@ -34,6 +35,7 @@ public class UserFormDialog extends Dialog {
 
     private final UserService userService;
     private final ProfileService profileService;
+    private final PermissionService permissionService;
     private final Binder<User> binder;
     private final User user;
     private final Consumer<User> onSaveCallback;
@@ -44,16 +46,17 @@ public class UserFormDialog extends Dialog {
     private TextField lastNameField;
     private TextField phoneField;
     private TextField departmentField;
-    private ComboBox<Profile> profileComboBox;
+    private MultiSelectComboBox<Profile> profileMultiSelect;
     private TextArea notesField;
     private Checkbox activeCheckbox;
     private Div permissionPreview;
 
     public UserFormDialog(User user, UserService userService, ProfileService profileService,
-            Consumer<User> onSaveCallback) {
+            PermissionService permissionService, Consumer<User> onSaveCallback) {
         this.user = user != null ? user : new User();
         this.userService = userService;
         this.profileService = profileService;
+        this.permissionService = permissionService;
         this.onSaveCallback = onSaveCallback;
         this.binder = new Binder<>(User.class);
 
@@ -112,14 +115,45 @@ public class UserFormDialog extends Dialog {
         departmentField.setPrefixComponent(new Icon(VaadinIcon.BUILDING));
         departmentField.setPlaceholder("es. IT, Vendite, Amministrazione");
 
-        // Profile
-        profileComboBox = new ComboBox<>("Profilo");
-        profileComboBox.setRequired(true);
-        profileComboBox.setItems(profileService.findActive());
-        profileComboBox.setItemLabelGenerator(Profile::getName);
-        profileComboBox.setPlaceholder("Seleziona un profilo");
-        profileComboBox.addValueChangeListener(e -> updatePermissionPreview());
+        // Profile - Multiple selection
+        profileMultiSelect = new MultiSelectComboBox<>("Profili");
+        profileMultiSelect.setRequired(true);
+        profileMultiSelect.setItems(profileService.findActive());
+        profileMultiSelect.setItemLabelGenerator(Profile::getName);
+        profileMultiSelect.setPlaceholder("Seleziona uno o più profili");
+        profileMultiSelect.addValueChangeListener(e -> updatePermissionPreview());
+        profileMultiSelect.setWidthFull();
 
+        // Create profile button
+        Button createProfileButton = new Button("Crea nuovo profilo");
+        createProfileButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+        createProfileButton.setIcon(new Icon(VaadinIcon.PLUS_CIRCLE));
+        createProfileButton.addClickListener(e -> openCreateProfileDialog());
+        createProfileButton.getStyle()
+                .set("margin-top", "var(--lumo-space-xs)")
+                .set("align-self", "flex-start");
+
+        // Info message for profiles
+        Div profileInfo = new Div();
+        if (profileService.findActive().isEmpty()) {
+            Span infoText = new Span("⚠️ Non ci sono profili disponibili. Crea prima un profilo per poter assegnare permessi agli utenti.");
+            infoText.getStyle()
+                    .set("color", "var(--lumo-warning-text-color)")
+                    .set("font-size", "var(--lumo-font-size-s)")
+                    .set("display", "block")
+                    .set("margin-top", "var(--lumo-space-xs)");
+            profileInfo.add(infoText);
+        }
+
+        // Profile layout with button
+        VerticalLayout profileLayout = new VerticalLayout();
+        profileLayout.setPadding(false);
+        profileLayout.setSpacing(false);
+        profileLayout.add(profileMultiSelect, createProfileButton);
+        if (!profileInfo.getChildren().findAny().isEmpty()) {
+            profileLayout.add(profileInfo);
+        }
+        
         // Active
         activeCheckbox = new Checkbox("Utente attivo");
         activeCheckbox.setValue(user.getId() == null ? true : user.getActive());
@@ -134,7 +168,7 @@ public class UserFormDialog extends Dialog {
         formLayout.add(usernameField, emailField);
         formLayout.add(firstNameField, lastNameField);
         formLayout.add(phoneField, departmentField);
-        formLayout.add(profileComboBox, 2);
+        formLayout.add(profileLayout, 2);
         formLayout.add(activeCheckbox, 2);
         formLayout.add(notesField, 2);
 
@@ -165,9 +199,9 @@ public class UserFormDialog extends Dialog {
                 .withValidator(new StringLengthValidator("Massimo 100 caratteri", 0, 100))
                 .bind(User::getDepartment, User::setDepartment);
 
-        binder.forField(profileComboBox)
-                .asRequired("Seleziona un profilo")
-                .bind(User::getProfile, User::setProfile);
+        binder.forField(profileMultiSelect)
+                .asRequired("Seleziona almeno un profilo")
+                .bind(User::getProfiles, User::setProfiles);
 
         binder.forField(activeCheckbox)
                 .bind(User::getActive, User::setActive);
@@ -192,63 +226,123 @@ public class UserFormDialog extends Dialog {
     private void updatePermissionPreview() {
         permissionPreview.removeAll();
 
-        Profile selectedProfile = profileComboBox.getValue();
-        if (selectedProfile == null) {
-            Span hint = new Span("Seleziona un profilo per visualizzare i permessi associati");
+        var selectedProfiles = profileMultiSelect.getValue();
+        if (selectedProfiles == null || selectedProfiles.isEmpty()) {
+            Span hint = new Span("Seleziona uno o più profili per visualizzare i permessi associati");
             hint.getStyle().set("color", "var(--lumo-secondary-text-color)");
             permissionPreview.add(hint);
             return;
         }
 
-        H4 title = new H4("Permessi del profilo: " + selectedProfile.getName());
+        H4 title = new H4("Permessi combinati dei profili selezionati");
         title.getStyle().set("margin", "0 0 var(--lumo-space-s) 0");
-
         permissionPreview.add(title);
 
-        if (selectedProfile.getDescription() != null && !selectedProfile.getDescription().isEmpty()) {
-            Span description = new Span(selectedProfile.getDescription());
-            description.getStyle()
+        // Mostra i profili selezionati
+        Div profilesDiv = new Div();
+        profilesDiv.getStyle()
+                .set("margin-bottom", "var(--lumo-space-m)")
+                .set("font-size", "var(--lumo-font-size-s)");
+        
+        selectedProfiles.stream()
+                .sorted((p1, p2) -> p1.getName().compareTo(p2.getName()))
+                .forEach(profile -> {
+                    Icon profileIcon = new Icon(VaadinIcon.USER_CARD);
+                    profileIcon.setSize("14px");
+                    profileIcon.getStyle().set("margin-right", "var(--lumo-space-xs)");
+                    
+                    Span profileName = new Span(profile.getName());
+                    profileName.getStyle()
+                            .set("color", "var(--lumo-primary-text-color)")
+                            .set("font-weight", "500");
+                    
+                    HorizontalLayout profileRow = new HorizontalLayout(profileIcon, profileName);
+                    profileRow.setAlignItems(FlexComponent.Alignment.CENTER);
+                    profileRow.setSpacing(false);
+                    profileRow.getStyle()
+                            .set("padding", "var(--lumo-space-xs) var(--lumo-space-s)")
+                            .set("background", "var(--lumo-primary-color-10pct)")
+                            .set("border-radius", "var(--lumo-border-radius-m)")
+                            .set("margin-bottom", "var(--lumo-space-xs)")
+                            .set("display", "inline-flex");
+                    
+                    profilesDiv.add(profileRow);
+                });
+        
+        permissionPreview.add(profilesDiv);
+
+        // Raccoglie tutti i permessi unici dai profili selezionati
+        java.util.Set<io.bootify.my_app.domain.Permission> allPermissions = new java.util.HashSet<>();
+        selectedProfiles.forEach(profile -> {
+            profileService.findByIdWithPermissions(profile.getId()).ifPresent(p -> {
+                allPermissions.addAll(p.getPermissions());
+            });
+        });
+
+        if (allPermissions.isEmpty()) {
+            Span noPermissions = new Span("⚠️ I profili selezionati non hanno permessi assegnati");
+            noPermissions.getStyle().set("color", "var(--lumo-error-text-color)");
+            permissionPreview.add(noPermissions);
+        } else {
+            Span permissionsCount = new Span("Totale permessi unici: " + allPermissions.size());
+            permissionsCount.getStyle()
                     .set("color", "var(--lumo-secondary-text-color)")
                     .set("font-size", "var(--lumo-font-size-s)")
                     .set("display", "block")
-                    .set("margin-bottom", "var(--lumo-space-m)");
-            permissionPreview.add(description);
+                    .set("margin-bottom", "var(--lumo-space-s)");
+            permissionPreview.add(permissionsCount);
+
+            VerticalLayout permissionsList = new VerticalLayout();
+            permissionsList.setPadding(false);
+            permissionsList.setSpacing(false);
+
+            allPermissions.stream()
+                    .sorted((p1, p2) -> {
+                        int catCompare = p1.getCategory().compareTo(p2.getCategory());
+                        return catCompare != 0 ? catCompare : p1.getName().compareTo(p2.getName());
+                    })
+                    .forEach(permission -> {
+                        Icon icon = new Icon(VaadinIcon.CHECK_CIRCLE);
+                        icon.setSize("16px");
+                        icon.setColor("var(--lumo-success-color)");
+
+                        Span permName = new Span(permission.getDescription());
+                        permName.getStyle().set("font-size", "var(--lumo-font-size-s)");
+
+                        HorizontalLayout permRow = new HorizontalLayout(icon, permName);
+                        permRow.setAlignItems(FlexComponent.Alignment.CENTER);
+                        permRow.setSpacing(true);
+                        permRow.getStyle().set("padding", "var(--lumo-space-xs) 0");
+
+                        permissionsList.add(permRow);
+                    });
+
+            permissionPreview.add(permissionsList);
         }
+    }
 
-        profileService.findByIdWithPermissions(selectedProfile.getId()).ifPresent(profile -> {
-            if (profile.getPermissions().isEmpty()) {
-                Span noPermissions = new Span("⚠️ Questo profilo non ha permessi assegnati");
-                noPermissions.getStyle().set("color", "var(--lumo-error-text-color)");
-                permissionPreview.add(noPermissions);
-            } else {
-                VerticalLayout permissionsList = new VerticalLayout();
-                permissionsList.setPadding(false);
-                permissionsList.setSpacing(false);
-
-                profile.getPermissions().stream()
-                        .sorted((p1, p2) -> {
-                            int catCompare = p1.getCategory().compareTo(p2.getCategory());
-                            return catCompare != 0 ? catCompare : p1.getName().compareTo(p2.getName());
-                        })
-                        .forEach(permission -> {
-                            Icon icon = new Icon(VaadinIcon.CHECK_CIRCLE);
-                            icon.setSize("16px");
-                            icon.setColor("var(--lumo-success-color)");
-
-                            Span permName = new Span(permission.getDescription());
-                            permName.getStyle().set("font-size", "var(--lumo-font-size-s)");
-
-                            HorizontalLayout permRow = new HorizontalLayout(icon, permName);
-                            permRow.setAlignItems(FlexComponent.Alignment.CENTER);
-                            permRow.setSpacing(true);
-                            permRow.getStyle().set("padding", "var(--lumo-space-xs) 0");
-
-                            permissionsList.add(permRow);
-                        });
-
-                permissionPreview.add(permissionsList);
-            }
+    private void openCreateProfileDialog() {
+        ProfileFormDialog dialog = new ProfileFormDialog(null, profileService, permissionService, savedProfile -> {
+            // Ricarica la lista dei profili
+            refreshProfileList();
+            // Aggiunge il profilo appena creato alla selezione
+            var currentSelection = new java.util.HashSet<>(profileMultiSelect.getValue());
+            currentSelection.add(savedProfile);
+            profileMultiSelect.setValue(currentSelection);
+            
+            Notification.show("Profilo creato! Ora puoi completare la creazione dell'utente.", 
+                    3000, Notification.Position.BOTTOM_START)
+                    .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
         });
+        dialog.open();
+    }
+
+    private void refreshProfileList() {
+        var currentSelection = profileMultiSelect.getValue();
+        profileMultiSelect.setItems(profileService.findActive());
+        if (currentSelection != null && !currentSelection.isEmpty()) {
+            profileMultiSelect.setValue(currentSelection);
+        }
     }
 
     private void createFooter() {

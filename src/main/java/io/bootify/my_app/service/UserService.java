@@ -26,16 +26,16 @@ public class UserService {
         return userRepository.findByActive(true);
     }
 
-    public List<User> findByProfileId(Long profileId) {
-        return userRepository.findByProfileId(profileId);
+    public List<User> findByProfilesId(Long profileId) {
+        return userRepository.findByProfilesId(profileId);
     }
 
     public Optional<User> findById(Long id) {
         return userRepository.findById(id);
     }
 
-    public Optional<User> findByIdWithProfile(Long id) {
-        return userRepository.findByIdWithProfile(id);
+    public Optional<User> findByIdWithProfiles(Long id) {
+        return userRepository.findByIdWithProfiles(id);
     }
 
     public Optional<User> findByUsername(String username) {
