@@ -35,6 +35,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.stream.Collectors;
+import com.vaadin.flow.component.combobox.ComboBox;
+import com.vaadin.flow.component.checkbox.Checkbox;
+import com.vaadin.flow.component.html.Anchor;
+import com.vaadin.flow.server.StreamResource;
+import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
 
 @Route(value = "users", layout = MainLayout.class)
 @PageTitle("Gestione Utenti")
@@ -48,6 +55,9 @@ public class UserManagementView extends VerticalLayout {
     private Grid<Profile> profileGrid;
     private TextField userSearchField;
     private TextField profileSearchField;
+    private ComboBox<String> departmentFilter;
+    private ComboBox<Profile> profileFilter;
+    private Checkbox activeOnlyFilter;
     private Div userStatsDiv;
     private Div profileStatsDiv;
     private Tabs tabs;
@@ -129,6 +139,27 @@ public class UserManagementView extends VerticalLayout {
         userSearchField.addValueChangeListener(e -> filterUsers(e.getValue()));
         userSearchField.setClearButtonVisible(true);
 
+        // Filtro per dipartimento
+        departmentFilter = new ComboBox<>("Dipartimento");
+        departmentFilter.setPlaceholder("Tutti");
+        departmentFilter.setClearButtonVisible(true);
+        departmentFilter.setWidth("180px");
+        departmentFilter.addValueChangeListener(e -> applyFilters());
+
+        // Filtro per profilo
+        profileFilter = new ComboBox<>("Profilo");
+        profileFilter.setPlaceholder("Tutti");
+        profileFilter.setItemLabelGenerator(Profile::getName);
+        profileFilter.setClearButtonVisible(true);
+        profileFilter.setWidth("180px");
+        profileFilter.addValueChangeListener(e -> applyFilters());
+
+        // Filtro solo attivi
+        activeOnlyFilter = new Checkbox("Solo attivi");
+        activeOnlyFilter.setValue(false);
+        activeOnlyFilter.addValueChangeListener(e -> applyFilters());
+        activeOnlyFilter.getStyle().set("margin-left", "var(--lumo-space-m)");
+
         Button addUserButton = new Button("Nuovo Utente", new Icon(VaadinIcon.PLUS));
         addUserButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         addUserButton.addClickListener(e -> openUserDialog(null));
@@ -136,10 +167,26 @@ public class UserManagementView extends VerticalLayout {
         Button refreshUsersButton = new Button("Aggiorna", new Icon(VaadinIcon.REFRESH));
         refreshUsersButton.addClickListener(e -> refreshUserGrid());
 
-        HorizontalLayout userToolbar = new HorizontalLayout(userSearchField, addUserButton, refreshUsersButton);
+        Button clearFiltersButton = new Button("Azzera filtri", new Icon(VaadinIcon.CLOSE_SMALL));
+        clearFiltersButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+        clearFiltersButton.addClickListener(e -> clearUserFilters());
+
+        // Export CSV
+        Anchor exportAnchor = createExportAnchor();
+
+        // Layout filtri
+        HorizontalLayout filtersLayout = new HorizontalLayout(userSearchField, departmentFilter, profileFilter, activeOnlyFilter);
+        filtersLayout.setDefaultVerticalComponentAlignment(FlexComponent.Alignment.BASELINE);
+        filtersLayout.setSpacing(true);
+        filtersLayout.getStyle().set("flex-wrap", "wrap").set("gap", "var(--lumo-space-s)");
+
+        HorizontalLayout actionsLayout = new HorizontalLayout(addUserButton, exportAnchor, refreshUsersButton, clearFiltersButton);
+        actionsLayout.setSpacing(true);
+
+        HorizontalLayout userToolbar = new HorizontalLayout(filtersLayout, actionsLayout);
         userToolbar.setDefaultVerticalComponentAlignment(FlexComponent.Alignment.CENTER);
         userToolbar.setWidthFull();
-        userToolbar.setJustifyContentMode(FlexComponent.JustifyContentMode.START);
+        userToolbar.setJustifyContentMode(FlexComponent.JustifyContentMode.BETWEEN);
         userToolbar.getStyle().set("flex-wrap", "wrap");
 
         // Grid
@@ -295,6 +342,55 @@ public class UserManagementView extends VerticalLayout {
                 .setAutoWidth(true)
                 .setFlexGrow(1);
 
+        // Last login
+        userGrid.addColumn(new ComponentRenderer<>(user -> {
+            if (user.getLastLogin() != null) {
+                java.time.Duration duration = java.time.Duration.between(user.getLastLogin(), java.time.OffsetDateTime.now());
+                String timeAgo;
+                if (duration.toDays() > 30) {
+                    timeAgo = user.getLastLogin().format(DATE_FORMATTER);
+                } else if (duration.toDays() > 0) {
+                    timeAgo = duration.toDays() + " giorn" + (duration.toDays() == 1 ? "o" : "i") + " fa";
+                } else if (duration.toHours() > 0) {
+                    timeAgo = duration.toHours() + " or" + (duration.toHours() == 1 ? "a" : "e") + " fa";
+                } else if (duration.toMinutes() > 0) {
+                    timeAgo = duration.toMinutes() + " minut" + (duration.toMinutes() == 1 ? "o" : "i") + " fa";
+                } else {
+                    timeAgo = "Adesso";
+                }
+                
+                Icon icon = new Icon(VaadinIcon.CLOCK);
+                icon.setSize("14px");
+                icon.getStyle().set("margin-right", "var(--lumo-space-xs)");
+                icon.setColor(duration.toDays() > 7 ? "var(--lumo-secondary-text-color)" : "var(--lumo-success-color)");
+                
+                Span timeSpan = new Span(timeAgo);
+                timeSpan.getStyle().set("font-size", "var(--lumo-font-size-s)");
+                if (duration.toDays() > 30) {
+                    timeSpan.getStyle().set("color", "var(--lumo-error-text-color)");
+                } else if (duration.toDays() > 7) {
+                    timeSpan.getStyle().set("color", "var(--lumo-secondary-text-color)");
+                } else {
+                    timeSpan.getStyle().set("color", "var(--lumo-success-text-color)");
+                }
+                
+                HorizontalLayout layout = new HorizontalLayout(icon, timeSpan);
+                layout.setAlignItems(FlexComponent.Alignment.CENTER);
+                layout.setSpacing(false);
+                layout.getElement().setAttribute("title", "Ultimo accesso: " + user.getLastLogin().format(DATE_FORMATTER));
+                return layout;
+            }
+            Span never = new Span("Mai");
+            never.getStyle()
+                    .set("color", "var(--lumo-secondary-text-color)")
+                    .set("font-size", "var(--lumo-font-size-s)")
+                    .set("font-style", "italic");
+            return never;
+        }))
+                .setHeader("Ultimo Accesso")
+                .setAutoWidth(true)
+                .setSortable(true);
+
         // Date created
         userGrid.addColumn(user -> user.getDateCreated() != null ? user.getDateCreated().format(DATE_FORMATTER) : "—")
                 .setHeader("Data Creazione")
@@ -309,6 +405,18 @@ public class UserManagementView extends VerticalLayout {
     }
 
     private Component createUserActionsLayout(User user) {
+        // Toggle attivo/disattivo
+        Button toggleActiveButton = new Button(new Icon(user.getActive() ? VaadinIcon.POWER_OFF : VaadinIcon.CHECK));
+        toggleActiveButton.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_TERTIARY);
+        if (user.getActive()) {
+            toggleActiveButton.setTooltipText("Disattiva utente");
+            toggleActiveButton.getStyle().set("color", "var(--lumo-error-color)");
+        } else {
+            toggleActiveButton.setTooltipText("Attiva utente");
+            toggleActiveButton.getStyle().set("color", "var(--lumo-success-color)");
+        }
+        toggleActiveButton.addClickListener(e -> toggleUserActive(user));
+
         Button editButton = new Button(new Icon(VaadinIcon.EDIT));
         editButton.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_TERTIARY);
         editButton.setTooltipText("Modifica");
@@ -319,9 +427,23 @@ public class UserManagementView extends VerticalLayout {
         deleteButton.setTooltipText("Elimina");
         deleteButton.addClickListener(e -> confirmDeleteUser(user));
 
-        HorizontalLayout actions = new HorizontalLayout(editButton, deleteButton);
+        HorizontalLayout actions = new HorizontalLayout(toggleActiveButton, editButton, deleteButton);
         actions.setSpacing(false);
         return actions;
+    }
+
+    private void toggleUserActive(User user) {
+        try {
+            user.setActive(!user.getActive());
+            userService.save(user);
+            refreshUserGrid();
+            String status = user.getActive() ? "attivato" : "disattivato";
+            Notification.show("Utente " + status + ": " + user.getFullName(), 3000, Notification.Position.BOTTOM_START)
+                    .addThemeVariants(user.getActive() ? NotificationVariant.LUMO_SUCCESS : NotificationVariant.LUMO_CONTRAST);
+        } catch (Exception e) {
+            Notification.show("Errore: " + e.getMessage(), 3000, Notification.Position.MIDDLE)
+                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
+        }
     }
 
     private void createProfilesContent() {
@@ -489,6 +611,24 @@ public class UserManagementView extends VerticalLayout {
     }
 
     private Component createProfileActionsLayout(Profile profile) {
+        // Toggle attivo/disattivo
+        Button toggleActiveButton = new Button(new Icon(profile.getActive() ? VaadinIcon.POWER_OFF : VaadinIcon.CHECK));
+        toggleActiveButton.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_TERTIARY);
+        if (profile.getActive()) {
+            toggleActiveButton.setTooltipText("Disattiva profilo");
+            toggleActiveButton.getStyle().set("color", "var(--lumo-error-color)");
+        } else {
+            toggleActiveButton.setTooltipText("Attiva profilo");
+            toggleActiveButton.getStyle().set("color", "var(--lumo-success-color)");
+        }
+        toggleActiveButton.addClickListener(e -> toggleProfileActive(profile));
+
+        // Duplica profilo
+        Button duplicateButton = new Button(new Icon(VaadinIcon.COPY));
+        duplicateButton.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_TERTIARY);
+        duplicateButton.setTooltipText("Duplica profilo");
+        duplicateButton.addClickListener(e -> duplicateProfile(profile));
+
         Button editButton = new Button(new Icon(VaadinIcon.EDIT));
         editButton.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_TERTIARY);
         editButton.setTooltipText("Modifica");
@@ -499,9 +639,66 @@ public class UserManagementView extends VerticalLayout {
         deleteButton.setTooltipText("Elimina");
         deleteButton.addClickListener(e -> confirmDeleteProfile(profile));
 
-        HorizontalLayout actions = new HorizontalLayout(editButton, deleteButton);
+        HorizontalLayout actions = new HorizontalLayout(toggleActiveButton, duplicateButton, editButton, deleteButton);
         actions.setSpacing(false);
         return actions;
+    }
+
+    private void toggleProfileActive(Profile profile) {
+        try {
+            profile.setActive(!profile.getActive());
+            profileService.save(profile);
+            refreshProfileGrid();
+            String status = profile.getActive() ? "attivato" : "disattivato";
+            Notification.show("Profilo " + status + ": " + profile.getName(), 3000, Notification.Position.BOTTOM_START)
+                    .addThemeVariants(profile.getActive() ? NotificationVariant.LUMO_SUCCESS : NotificationVariant.LUMO_CONTRAST);
+        } catch (Exception e) {
+            Notification.show("Errore: " + e.getMessage(), 3000, Notification.Position.MIDDLE)
+                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
+        }
+    }
+
+    private void duplicateProfile(Profile originalProfile) {
+        try {
+            // Carica il profilo completo con i permessi
+            Profile fullProfile = profileService.findByIdWithPermissions(originalProfile.getId()).orElse(null);
+            if (fullProfile == null) {
+                Notification.show("Profilo non trovato", 3000, Notification.Position.MIDDLE)
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                return;
+            }
+
+            // Crea un nuovo profilo come copia
+            Profile newProfile = new Profile();
+            newProfile.setName(generateUniqueName(fullProfile.getName()));
+            newProfile.setDescription(fullProfile.getDescription() != null ? 
+                    "Copia di: " + fullProfile.getDescription() : 
+                    "Copia del profilo " + fullProfile.getName());
+            newProfile.setActive(true);
+            newProfile.setPermissions(new java.util.HashSet<>(fullProfile.getPermissions()));
+
+            Profile savedProfile = profileService.save(newProfile);
+            refreshProfileGrid();
+            
+            Notification.show("Profilo duplicato: " + savedProfile.getName(), 3000, Notification.Position.BOTTOM_START)
+                    .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            
+            // Apri il dialog di modifica per personalizzare
+            openProfileDialog(savedProfile);
+        } catch (Exception e) {
+            Notification.show("Errore durante la duplicazione: " + e.getMessage(), 3000, Notification.Position.MIDDLE)
+                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
+        }
+    }
+
+    private String generateUniqueName(String baseName) {
+        String newName = baseName + " - Copia";
+        int counter = 1;
+        while (profileService.existsByName(newName)) {
+            newName = baseName + " - Copia " + counter;
+            counter++;
+        }
+        return newName;
     }
 
     private void showTab(int index) {
@@ -762,13 +959,58 @@ public class UserManagementView extends VerticalLayout {
         }
     }
 
-    private void filterUsers(String searchTerm) {
-        if (searchTerm == null || searchTerm.trim().isEmpty()) {
-            refreshUserGrid();
-        } else {
-            List<User> users = userService.search(searchTerm);
-            userGrid.setItems(users);
+    private void applyFilters() {
+        List<User> users = userService.findAll();
+        
+        // Filtro testuale
+        String searchTerm = userSearchField.getValue();
+        if (searchTerm != null && !searchTerm.trim().isEmpty()) {
+            String lowerSearch = searchTerm.toLowerCase().trim();
+            users = users.stream()
+                    .filter(u -> u.getUsername().toLowerCase().contains(lowerSearch) ||
+                            u.getEmail().toLowerCase().contains(lowerSearch) ||
+                            u.getFirstName().toLowerCase().contains(lowerSearch) ||
+                            u.getLastName().toLowerCase().contains(lowerSearch) ||
+                            (u.getDepartment() != null && u.getDepartment().toLowerCase().contains(lowerSearch)))
+                    .collect(Collectors.toList());
         }
+        
+        // Filtro dipartimento
+        String selectedDepartment = departmentFilter.getValue();
+        if (selectedDepartment != null && !selectedDepartment.isEmpty()) {
+            users = users.stream()
+                    .filter(u -> selectedDepartment.equals(u.getDepartment()))
+                    .collect(Collectors.toList());
+        }
+        
+        // Filtro profilo
+        Profile selectedProfile = profileFilter.getValue();
+        if (selectedProfile != null) {
+            users = users.stream()
+                    .filter(u -> u.getProfiles() != null && u.getProfiles().contains(selectedProfile))
+                    .collect(Collectors.toList());
+        }
+        
+        // Filtro solo attivi
+        if (activeOnlyFilter.getValue()) {
+            users = users.stream()
+                    .filter(User::getActive)
+                    .collect(Collectors.toList());
+        }
+        
+        userGrid.setItems(users);
+    }
+
+    private void clearUserFilters() {
+        userSearchField.clear();
+        departmentFilter.clear();
+        profileFilter.clear();
+        activeOnlyFilter.setValue(false);
+        refreshUserGrid();
+    }
+
+    private void filterUsers(String searchTerm) {
+        applyFilters();
     }
 
     private void filterProfiles(String searchTerm) {
@@ -784,7 +1026,23 @@ public class UserManagementView extends VerticalLayout {
         List<User> users = userService.findAll();
         userGrid.setItems(users);
         updateUserStats();
-        userSearchField.clear();
+        
+        // Aggiorna i valori disponibili per i filtri
+        updateFilterOptions(users);
+    }
+
+    private void updateFilterOptions(List<User> users) {
+        // Aggiorna dipartimenti disponibili
+        List<String> departments = users.stream()
+                .map(User::getDepartment)
+                .filter(d -> d != null && !d.trim().isEmpty())
+                .distinct()
+                .sorted()
+                .collect(Collectors.toList());
+        departmentFilter.setItems(departments);
+        
+        // Aggiorna profili disponibili
+        profileFilter.setItems(profileService.findAll());
     }
 
     private void refreshProfileGrid() {
@@ -822,5 +1080,51 @@ public class UserManagementView extends VerticalLayout {
                 .set("font-weight", "500");
 
         profileStatsDiv.add(stats);
+    }
+
+    private Anchor createExportAnchor() {
+        StreamResource resource = new StreamResource("utenti.csv", () -> {
+            StringBuilder csv = new StringBuilder();
+            // Header
+            csv.append("Username,Email,Nome,Cognome,Telefono,Dipartimento,Profili,Stato,Data Creazione,Ultimo Accesso\n");
+            
+            // Data
+            List<User> users = userService.findAll();
+            for (User user : users) {
+                csv.append(escapeCsv(user.getUsername())).append(",");
+                csv.append(escapeCsv(user.getEmail())).append(",");
+                csv.append(escapeCsv(user.getFirstName())).append(",");
+                csv.append(escapeCsv(user.getLastName())).append(",");
+                csv.append(escapeCsv(user.getPhone())).append(",");
+                csv.append(escapeCsv(user.getDepartment())).append(",");
+                csv.append(escapeCsv(user.getProfileNames())).append(",");
+                csv.append(user.getActive() ? "Attivo" : "Disattivato").append(",");
+                csv.append(user.getDateCreated() != null ? user.getDateCreated().format(DATE_FORMATTER) : "").append(",");
+                csv.append(user.getLastLogin() != null ? user.getLastLogin().format(DATE_FORMATTER) : "Mai").append("\n");
+            }
+            
+            return new ByteArrayInputStream(csv.toString().getBytes(StandardCharsets.UTF_8));
+        });
+        
+        resource.setContentType("text/csv");
+        
+        Button exportButton = new Button("Esporta CSV", new Icon(VaadinIcon.DOWNLOAD));
+        exportButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+        
+        Anchor anchor = new Anchor(resource, "");
+        anchor.getElement().setAttribute("download", true);
+        anchor.add(exportButton);
+        
+        return anchor;
+    }
+
+    private String escapeCsv(String value) {
+        if (value == null) {
+            return "";
+        }
+        if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
+            return "\"" + value.replace("\"", "\"\"") + "\"";
+        }
+        return value;
     }
 }
