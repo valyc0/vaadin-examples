@@ -19,9 +19,8 @@ public class MainLayout extends AppLayout {
     private void createHeader() {
         H1 logo = new H1("My Application");
         logo.addClassNames(
-            LumoUtility.FontSize.LARGE,
-            LumoUtility.Margin.MEDIUM
-        );
+                LumoUtility.FontSize.LARGE,
+                LumoUtility.Margin.MEDIUM);
 
         DrawerToggle toggle = new DrawerToggle();
 
@@ -29,9 +28,8 @@ public class MainLayout extends AppLayout {
         header.setDefaultVerticalComponentAlignment(FlexComponent.Alignment.CENTER);
         header.setWidthFull();
         header.addClassNames(
-            LumoUtility.Padding.Vertical.NONE,
-            LumoUtility.Padding.Horizontal.MEDIUM
-        );
+                LumoUtility.Padding.Vertical.NONE,
+                LumoUtility.Padding.Horizontal.MEDIUM);
 
         addToNavbar(header);
     }
@@ -39,15 +37,17 @@ public class MainLayout extends AppLayout {
     private void createDrawer() {
         RouterLink homeLink = new RouterLink("Home", HomeView.class);
         RouterLink dashboardLink = new RouterLink("Dashboard", DashboardView.class);
+        RouterLink usersLink = new RouterLink("Gestione Utenti", UserManagementView.class);
         RouterLink graphLink = new RouterLink("Grafo Prodotti", GraphView.class);
         RouterLink prodottiLink = new RouterLink("Gestione Prodotti", ProdottoManagementView.class);
         RouterLink filesLink = new RouterLink("Gestione File Avanzata", EnhancedFileManagementView.class);
         RouterLink fileDetailLink = new RouterLink("Dettaglio File", FileDetailView.class);
         RouterLink genericGridLink = new RouterLink("Generic Grid", GenericGridView.class);
         RouterLink searchLink = new RouterLink("Ricerca Documenti", SearchView.class);
-        
+
         homeLink.addClassNames(LumoUtility.Padding.MEDIUM);
         dashboardLink.addClassNames(LumoUtility.Padding.MEDIUM);
+        usersLink.addClassNames(LumoUtility.Padding.MEDIUM);
         graphLink.addClassNames(LumoUtility.Padding.MEDIUM);
         prodottiLink.addClassNames(LumoUtility.Padding.MEDIUM);
         filesLink.addClassNames(LumoUtility.Padding.MEDIUM);
@@ -55,7 +55,8 @@ public class MainLayout extends AppLayout {
         genericGridLink.addClassNames(LumoUtility.Padding.MEDIUM);
         searchLink.addClassNames(LumoUtility.Padding.MEDIUM);
 
-        VerticalLayout navigation = new VerticalLayout(homeLink, dashboardLink, graphLink, prodottiLink, filesLink, fileDetailLink, genericGridLink, searchLink);
+        VerticalLayout navigation = new VerticalLayout(homeLink, dashboardLink, usersLink, graphLink, prodottiLink,
+                filesLink, fileDetailLink, genericGridLink, searchLink);
         navigation.setPadding(true);
         navigation.setSpacing(false);
 
