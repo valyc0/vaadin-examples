@@ -4,6 +4,7 @@ import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.confirmdialog.ConfirmDialog;
+import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
 import com.vaadin.flow.component.html.Div;
@@ -237,7 +238,7 @@ public class UserManagementView extends VerticalLayout {
                 .setHeader("Dipartimento")
                 .setAutoWidth(true);
 
-        // Profile with badges (multiple)
+        // Profile with badges (multiple) - clickable
         userGrid.addColumn(new ComponentRenderer<>(user -> {
             if (user.getProfiles() != null && !user.getProfiles().isEmpty()) {
                 HorizontalLayout badgesLayout = new HorizontalLayout();
@@ -258,7 +259,27 @@ public class UserManagementView extends VerticalLayout {
                                     .set("border-radius", "var(--lumo-border-radius-m)")
                                     .set("font-size", "var(--lumo-font-size-xs)")
                                     .set("font-weight", "500")
-                                    .set("white-space", "nowrap");
+                                    .set("white-space", "nowrap")
+                                    .set("cursor", "pointer")
+                                    .set("transition", "all 0.2s");
+                            
+                            // Hover effect
+                            badge.getElement().addEventListener("mouseenter", e -> {
+                                badge.getStyle()
+                                        .set("background", "var(--lumo-primary-color-50pct)")
+                                        .set("transform", "scale(1.05)");
+                            });
+                            badge.getElement().addEventListener("mouseleave", e -> {
+                                badge.getStyle()
+                                        .set("background", "var(--lumo-primary-color-10pct)")
+                                        .set("transform", "scale(1)");
+                            });
+                            
+                            // Click to show permissions
+                            badge.getElement().addEventListener("click", e -> {
+                                openProfilePermissionsDialog(profile);
+                            });
+                            
                             badgesLayout.add(badge);
                         });
                 
@@ -398,7 +419,7 @@ public class UserManagementView extends VerticalLayout {
                 .setAutoWidth(true)
                 .setFlexGrow(3);
 
-        // Permission count
+        // Permission count - clickable
         profileGrid.addColumn(new ComponentRenderer<>(profile -> {
             int count = profile.getPermissionCount();
             Icon icon = new Icon(VaadinIcon.KEY);
@@ -411,6 +432,25 @@ public class UserManagementView extends VerticalLayout {
             HorizontalLayout layout = new HorizontalLayout(icon, countSpan);
             layout.setAlignItems(FlexComponent.Alignment.CENTER);
             layout.setSpacing(false);
+            layout.getStyle()
+                    .set("cursor", "pointer")
+                    .set("padding", "var(--lumo-space-xs) var(--lumo-space-s)")
+                    .set("border-radius", "var(--lumo-border-radius-m)")
+                    .set("transition", "all 0.2s");
+            
+            // Hover effect
+            layout.getElement().addEventListener("mouseenter", e -> {
+                layout.getStyle().set("background", "var(--lumo-primary-color-10pct)");
+            });
+            layout.getElement().addEventListener("mouseleave", e -> {
+                layout.getStyle().set("background", "transparent");
+            });
+            
+            // Click to show permissions
+            layout.getElement().addEventListener("click", e -> {
+                openProfilePermissionsDialog(profile);
+            });
+            
             return layout;
         }))
                 .setHeader("Permessi")
@@ -489,6 +529,170 @@ public class UserManagementView extends VerticalLayout {
         ProfileFormDialog dialog = new ProfileFormDialog(profile, profileService, permissionService, savedProfile -> {
             refreshProfileGrid();
         });
+        dialog.open();
+    }
+
+    private void openProfilePermissionsDialog(Profile profile) {
+        Dialog dialog = new Dialog();
+        dialog.setHeaderTitle("Permessi: " + profile.getName());
+        dialog.setWidth("600px");
+        dialog.setMaxHeight("80vh");
+
+        VerticalLayout content = new VerticalLayout();
+        content.setPadding(true);
+        content.setSpacing(true);
+
+        // Profile info
+        if (profile.getDescription() != null && !profile.getDescription().isEmpty()) {
+            Span description = new Span(profile.getDescription());
+            description.getStyle()
+                    .set("color", "var(--lumo-secondary-text-color)")
+                    .set("font-size", "var(--lumo-font-size-s)")
+                    .set("display", "block")
+                    .set("margin-bottom", "var(--lumo-space-m)")
+                    .set("font-style", "italic");
+            content.add(description);
+        }
+
+        // Load permissions
+        profileService.findByIdWithPermissions(profile.getId()).ifPresent(p -> {
+            if (p.getPermissions().isEmpty()) {
+                Div emptyState = new Div();
+                Icon warningIcon = new Icon(VaadinIcon.WARNING);
+                warningIcon.setSize("48px");
+                warningIcon.setColor("var(--lumo-error-color)");
+                warningIcon.getStyle()
+                        .set("margin", "var(--lumo-space-l) auto")
+                        .set("display", "block");
+
+                Span message = new Span("Questo profilo non ha permessi assegnati");
+                message.getStyle()
+                        .set("color", "var(--lumo-error-text-color)")
+                        .set("text-align", "center")
+                        .set("display", "block")
+                        .set("font-size", "var(--lumo-font-size-l)");
+
+                emptyState.add(warningIcon, message);
+                emptyState.getStyle()
+                        .set("text-align", "center")
+                        .set("padding", "var(--lumo-space-xl)");
+                content.add(emptyState);
+            } else {
+                // Permission count badge
+                Div countBadge = new Div();
+                Span countText = new Span(p.getPermissions().size() + " permess" + (p.getPermissions().size() == 1 ? "o" : "i"));
+                countText.getStyle()
+                        .set("background", "var(--lumo-success-color-10pct)")
+                        .set("color", "var(--lumo-success-text-color)")
+                        .set("padding", "var(--lumo-space-xs) var(--lumo-space-s)")
+                        .set("border-radius", "var(--lumo-border-radius-m)")
+                        .set("font-size", "var(--lumo-font-size-s)")
+                        .set("font-weight", "600")
+                        .set("display", "inline-block")
+                        .set("margin-bottom", "var(--lumo-space-m)");
+                countBadge.add(countText);
+                content.add(countBadge);
+
+                // Group permissions by category
+                java.util.Map<String, java.util.List<io.bootify.my_app.domain.Permission>> permissionsByCategory = 
+                    p.getPermissions().stream()
+                        .collect(java.util.stream.Collectors.groupingBy(
+                            io.bootify.my_app.domain.Permission::getCategory,
+                            java.util.stream.Collectors.toList()
+                        ));
+
+                permissionsByCategory.entrySet().stream()
+                        .sorted(java.util.Map.Entry.comparingByKey())
+                        .forEach(entry -> {
+                            String category = entry.getKey();
+                            java.util.List<io.bootify.my_app.domain.Permission> permissions = entry.getValue();
+
+                            // Category header
+                            HorizontalLayout categoryHeader = new HorizontalLayout();
+                            categoryHeader.setAlignItems(FlexComponent.Alignment.CENTER);
+                            categoryHeader.getStyle()
+                                    .set("margin-top", "var(--lumo-space-m)")
+                                    .set("margin-bottom", "var(--lumo-space-s)");
+
+                            Icon categoryIcon = new Icon(VaadinIcon.FOLDER_OPEN);
+                            categoryIcon.setSize("18px");
+                            categoryIcon.setColor("var(--lumo-primary-color)");
+
+                            Span categoryName = new Span(category);
+                            categoryName.getStyle()
+                                    .set("font-weight", "600")
+                                    .set("font-size", "var(--lumo-font-size-m)")
+                                    .set("color", "var(--lumo-primary-text-color)");
+
+                            Span categoryCount = new Span("(" + permissions.size() + ")");
+                            categoryCount.getStyle()
+                                    .set("color", "var(--lumo-secondary-text-color)")
+                                    .set("font-size", "var(--lumo-font-size-s)")
+                                    .set("margin-left", "var(--lumo-space-xs)");
+
+                            categoryHeader.add(categoryIcon, categoryName, categoryCount);
+                            content.add(categoryHeader);
+
+                            // Permissions in this category
+                            VerticalLayout permissionsList = new VerticalLayout();
+                            permissionsList.setPadding(false);
+                            permissionsList.setSpacing(false);
+                            permissionsList.getStyle()
+                                    .set("margin-left", "var(--lumo-space-l)")
+                                    .set("gap", "var(--lumo-space-xs)");
+
+                            permissions.stream()
+                                    .sorted((perm1, perm2) -> perm1.getName().compareTo(perm2.getName()))
+                                    .forEach(permission -> {
+                                        HorizontalLayout permRow = new HorizontalLayout();
+                                        permRow.setAlignItems(FlexComponent.Alignment.CENTER);
+                                        permRow.setSpacing(true);
+                                        permRow.getStyle()
+                                                .set("padding", "var(--lumo-space-xs)")
+                                                .set("border-radius", "var(--lumo-border-radius-s)")
+                                                .set("background", "var(--lumo-contrast-5pct)");
+
+                                        Icon checkIcon = new Icon(VaadinIcon.CHECK_CIRCLE);
+                                        checkIcon.setSize("16px");
+                                        checkIcon.setColor("var(--lumo-success-color)");
+
+                                        VerticalLayout permInfo = new VerticalLayout();
+                                        permInfo.setPadding(false);
+                                        permInfo.setSpacing(false);
+
+                                        Span permName = new Span(permission.getName());
+                                        permName.getStyle()
+                                                .set("font-weight", "500")
+                                                .set("font-size", "var(--lumo-font-size-s)");
+
+                                        Span permDesc = new Span(permission.getDescription());
+                                        permDesc.getStyle()
+                                                .set("color", "var(--lumo-secondary-text-color)")
+                                                .set("font-size", "var(--lumo-font-size-xs)");
+
+                                        permInfo.add(permName, permDesc);
+                                        permRow.add(checkIcon, permInfo);
+
+                                        permissionsList.add(permRow);
+                                    });
+
+                            content.add(permissionsList);
+                        });
+            }
+        });
+
+        dialog.add(content);
+
+        // Footer with close button
+        Button closeButton = new Button("Chiudi", e -> dialog.close());
+        closeButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+
+        HorizontalLayout footer = new HorizontalLayout(closeButton);
+        footer.setJustifyContentMode(FlexComponent.JustifyContentMode.END);
+        footer.setWidthFull();
+        footer.setPadding(true);
+
+        dialog.getFooter().add(footer);
         dialog.open();
     }
 
