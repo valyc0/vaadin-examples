@@ -44,6 +44,7 @@ public class MainLayout extends AppLayout {
         RouterLink fileDetailLink = new RouterLink("Dettaglio File", FileDetailView.class);
         RouterLink genericGridLink = new RouterLink("Generic Grid", GenericGridView.class);
         RouterLink searchLink = new RouterLink("Ricerca Documenti", SearchView.class);
+        RouterLink chatbotLink = new RouterLink("AI Chatbot", ChatbotView.class);
 
         homeLink.addClassNames(LumoUtility.Padding.MEDIUM);
         dashboardLink.addClassNames(LumoUtility.Padding.MEDIUM);
@@ -54,9 +55,10 @@ public class MainLayout extends AppLayout {
         fileDetailLink.addClassNames(LumoUtility.Padding.MEDIUM);
         genericGridLink.addClassNames(LumoUtility.Padding.MEDIUM);
         searchLink.addClassNames(LumoUtility.Padding.MEDIUM);
+        chatbotLink.addClassNames(LumoUtility.Padding.MEDIUM);
 
         VerticalLayout navigation = new VerticalLayout(homeLink, dashboardLink, usersLink, graphLink, prodottiLink,
-                filesLink, fileDetailLink, genericGridLink, searchLink);
+                filesLink, fileDetailLink, genericGridLink, searchLink, chatbotLink);
         navigation.setPadding(true);
         navigation.setSpacing(false);
 
