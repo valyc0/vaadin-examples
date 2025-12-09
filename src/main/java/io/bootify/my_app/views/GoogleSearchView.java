@@ -8,6 +8,7 @@ import com.vaadin.flow.component.html.*;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
+import com.vaadin.flow.component.orderedlayout.FlexComponent.Alignment;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextField;
@@ -188,35 +189,62 @@ public class GoogleSearchView extends Div {
                 "Java Programming - Official Documentation",
                 "https://docs.oracle.com/javase/tutorial/",
                 "The Java™ Tutorials are practical guides for programmers who want to use the Java programming language to create applications. They include hundreds of complete, working examples...",
-                "Oracle"
+                "Oracle",
+                null,
+                null
         ));
 
         results.add(new SearchResult(
                 "Learn " + query + " - Step by Step Guide",
                 "https://www.example.com/guide",
                 "Comprehensive guide to " + query + ". Start from basics and advance to expert level. Updated with latest features and best practices for 2025.",
-                "Example Learning Platform"
+                "Example Learning Platform",
+                null,
+                null
         ));
 
+        // File results
+        List<FileAttachment> pdfFiles = new ArrayList<>();
+        pdfFiles.add(new FileAttachment("Introduction_to_" + query.replace(" ", "_") + ".pdf", "PDF", "2.4 MB"));
+        pdfFiles.add(new FileAttachment("Advanced_" + query.replace(" ", "_") + "_Guide.pdf", "PDF", "5.1 MB"));
+        pdfFiles.add(new FileAttachment(query.replace(" ", "_") + "_Best_Practices.docx", "DOCX", "1.8 MB"));
+        pdfFiles.add(new FileAttachment(query.replace(" ", "_") + "_Cheat_Sheet.pdf", "PDF", "850 KB"));
+
         results.add(new SearchResult(
-                query + " Tutorial for Beginners",
-                "https://www.tutorial.com/" + query.replace(" ", "-"),
-                "Free tutorial covering all aspects of " + query + ". Includes video lessons, code examples, and practical exercises. Perfect for beginners.",
-                "Tutorial.com"
+                query + " - Documentation and Resources",
+                "https://www.resources.com/" + query.replace(" ", "-"),
+                "Comprehensive collection of documentation, tutorials, and reference materials for " + query + ". Download PDF guides, watch video tutorials, and access code examples.",
+                "Resources.com",
+                pdfFiles,
+                null
+        ));
+
+        // Video result
+        results.add(new SearchResult(
+                query + " - Complete Video Tutorial",
+                "https://www.example.com/video",
+                "Watch this comprehensive video tutorial covering all aspects of " + query + ". Duration: 45:30. Perfect for visual learners.",
+                "Video Platform",
+                null,
+                "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
         ));
 
         results.add(new SearchResult(
                 "Stack Overflow - " + query + " Questions",
                 "https://stackoverflow.com/questions/tagged/" + query.replace(" ", "+"),
                 "Browse thousands of questions and answers about " + query + ". Get help from the community and learn from real-world problems.",
-                "Stack Overflow"
+                "Stack Overflow",
+                null,
+                null
         ));
 
         results.add(new SearchResult(
                 "GitHub - " + query + " Projects",
                 "https://github.com/topics/" + query.replace(" ", "-"),
                 "Explore open source " + query + " projects on GitHub. Browse repositories, contribute to projects, and learn from other developers' code.",
-                "GitHub"
+                "GitHub",
+                null,
+                null
         ));
 
         return results;
@@ -257,7 +285,107 @@ public class GoogleSearchView extends Div {
                 .set("line-height", "1.6");
 
         card.add(url, title, description);
+
+        // Add file attachments if present
+        if (result.files != null && !result.files.isEmpty()) {
+            VerticalLayout filesContainer = new VerticalLayout();
+            filesContainer.setPadding(false);
+            filesContainer.setSpacing(true);
+            filesContainer.getStyle()
+                    .set("margin-top", "12px")
+                    .set("padding", "12px")
+                    .set("background-color", "var(--lumo-contrast-5pct)")
+                    .set("border-radius", "8px");
+
+            for (FileAttachment file : result.files) {
+                HorizontalLayout fileRow = new HorizontalLayout();
+                fileRow.setDefaultVerticalComponentAlignment(Alignment.CENTER);
+                fileRow.setSpacing(true);
+                fileRow.getStyle().set("padding", "4px 0");
+
+                Icon fileIcon = getFileIcon(file.type);
+                fileIcon.setSize("20px");
+                fileIcon.getStyle().set("color", getFileColor(file.type));
+
+                Span fileName = new Span(file.name);
+                fileName.getStyle()
+                        .set("font-size", "14px")
+                        .set("color", "#1a0dab");
+
+                Span fileSize = new Span("(" + file.size + ")");
+                fileSize.getStyle()
+                        .set("font-size", "12px")
+                        .set("color", "var(--lumo-secondary-text-color)")
+                        .set("margin-left", "8px");
+
+                fileRow.add(fileIcon, fileName, fileSize);
+                filesContainer.add(fileRow);
+            }
+
+            card.add(filesContainer);
+        }
+
+        // Add video player if video URL is present
+        if (result.videoUrl != null) {
+            Div videoContainer = new Div();
+            videoContainer.getStyle()
+                    .set("margin-top", "12px")
+                    .set("background-color", "#000")
+                    .set("border-radius", "8px")
+                    .set("overflow", "hidden");
+
+            Div videoPlayer = new Div();
+            videoPlayer.setId("video-player-" + result.hashCode());
+            videoPlayer.getStyle()
+                    .set("width", "100%")
+                    .set("max-width", "640px")
+                    .set("aspect-ratio", "16/9");
+
+            Button playButton = new Button("▶ Riproduci Video", new Icon(VaadinIcon.PLAY));
+            playButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_LARGE);
+            playButton.getStyle()
+                    .set("margin", "12px");
+
+            playButton.addClickListener(e -> {
+                videoContainer.removeAll();
+                getUI().ifPresent(ui -> ui.getPage().executeJs(
+                        "const container = $0;" +
+                        "container.innerHTML = '<video controls autoplay style=\"width: 100%; max-width: 640px; display: block;\">" +
+                        "<source src=\"" + result.videoUrl + "\" type=\"video/mp4\">" +
+                        "Your browser does not support the video tag.</video>';" +
+                        "container.querySelector('video').play();",
+                        videoPlayer.getElement()
+                ));
+                videoContainer.add(videoPlayer);
+            });
+
+            videoContainer.add(playButton);
+            card.add(videoContainer);
+        }
+
         return card;
+    }
+
+    private Icon getFileIcon(String type) {
+        return switch (type.toUpperCase()) {
+            case "PDF" -> new Icon(VaadinIcon.FILE_TEXT);
+            case "DOCX", "DOC" -> new Icon(VaadinIcon.FILE_TEXT_O);
+            case "MP4", "AVI", "MOV" -> new Icon(VaadinIcon.FILE_MOVIE);
+            case "MP3", "WAV" -> new Icon(VaadinIcon.FILE_SOUND);
+            case "ZIP", "RAR" -> new Icon(VaadinIcon.FILE_ZIP);
+            default -> new Icon(VaadinIcon.FILE);
+        };
+    }
+
+    private String getFileColor(String type) {
+        return switch (type.toUpperCase()) {
+            case "PDF" -> "#d32f2f";
+            case "DOCX", "DOC" -> "#1976d2";
+            case "MP4", "AVI", "MOV" -> "#7b1fa2";
+            case "MP3", "WAV" -> "#f57c00";
+            case "ZIP", "RAR" -> "#616161";
+            default -> "var(--lumo-secondary-text-color)";
+        };
     }
 
     private Button createChatbotFab() {
@@ -510,12 +638,28 @@ public class GoogleSearchView extends Div {
         String url;
         String description;
         String site;
+        List<FileAttachment> files;
+        String videoUrl;
 
-        SearchResult(String title, String url, String description, String site) {
+        SearchResult(String title, String url, String description, String site, List<FileAttachment> files, String videoUrl) {
             this.title = title;
             this.url = url;
             this.description = description;
             this.site = site;
+            this.files = files;
+            this.videoUrl = videoUrl;
+        }
+    }
+
+    private static class FileAttachment {
+        String name;
+        String type;
+        String size;
+
+        FileAttachment(String name, String type, String size) {
+            this.name = name;
+            this.type = type;
+            this.size = size;
         }
     }
 }
