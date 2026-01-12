@@ -227,11 +227,70 @@ public class ProdottoManagementView extends VerticalLayout {
         upload.getStyle().set("display", "none"); // Hide the upload component
         upload.setAutoUpload(true); // Auto-upload when file is selected
         
+        // Create progress UI components (will be shown during upload)
+        com.vaadin.flow.component.progressbar.ProgressBar progressBar = new com.vaadin.flow.component.progressbar.ProgressBar();
+        progressBar.setMin(0);
+        progressBar.setMax(100);
+        progressBar.setValue(0);
+        progressBar.setWidth("300px");
+        
+        com.vaadin.flow.component.html.Span progressText = new com.vaadin.flow.component.html.Span();
+        progressText.getStyle()
+                .set("font-weight", "500")
+                .set("margin-bottom", "var(--lumo-space-xs)");
+        
+        com.vaadin.flow.component.html.Span fileInfo = new com.vaadin.flow.component.html.Span(
+            String.format("Prodotto: %s", product.getName())
+        );
+        fileInfo.getStyle()
+                .set("font-size", "var(--lumo-font-size-s)")
+                .set("color", "var(--lumo-secondary-text-color)");
+        
+        com.vaadin.flow.component.orderedlayout.VerticalLayout progressLayout = 
+            new com.vaadin.flow.component.orderedlayout.VerticalLayout(
+                progressText, 
+                progressBar,
+                fileInfo
+            );
+        progressLayout.setPadding(false);
+        progressLayout.setSpacing(true);
+        progressLayout.getStyle().set("align-items", "flex-start");
+        
+        Notification progressNotification = new Notification();
+        progressNotification.add(progressLayout);
+        progressNotification.setPosition(Notification.Position.TOP_CENTER);
+        progressNotification.setDuration(0); // Keep open until closed manually
+        
+        // Handle upload start
+        upload.addStartedListener(event -> {
+            String fileName = event.getFileName();
+            progressBar.setValue(0);
+            progressText.setText("Caricamento: " + fileName + " - 0%%");
+            progressNotification.open();
+        });
+        
+        // Handle upload progress
+        upload.addProgressListener(event -> {
+            long contentLength = event.getContentLength();
+            long bytesRead = event.getReadBytes();
+            
+            if (contentLength > 0) {
+                double percentage = (bytesRead * 100.0) / contentLength;
+                progressBar.setValue(percentage);
+                progressText.setText(String.format("Caricamento: %.0f%%%%", percentage));
+            }
+        });
+        
         // Handle successful upload
         upload.addSucceededListener(event -> {
+            String fileName = event.getFileName();
+            
+            // Update to 100%
+            progressBar.setValue(100);
+            progressText.setText("Caricamento: 100%%");
+            
             try {
                 java.io.InputStream inputStream = buffer.getInputStream();
-                String fileName = buffer.getFileName();
                 String contentType = buffer.getFileData().getMimeType();
                 
                 byte[] fileBytes = inputStream.readAllBytes();
@@ -239,12 +298,22 @@ public class ProdottoManagementView extends VerticalLayout {
                 uploadService.uploadFileForProduct(product.getId(), fileBytes, fileName, 
                                                   contentType, "admin");
                 
-                Notification.show("File caricato con successo per: " + product.getName(), 
-                        3000, Notification.Position.BOTTOM_START)
-                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                // Close progress notification
+                progressNotification.close();
+                
+                // Show success notification
+                Notification success = Notification.show(
+                    "✓ File caricato con successo: " + fileName, 
+                    3000, 
+                    Notification.Position.BOTTOM_START
+                );
+                success.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 
                 refreshGrid();
             } catch (Exception ex) {
+                // Close progress notification
+                progressNotification.close();
+                
                 Notification.show("Errore durante il caricamento: " + ex.getMessage(),
                         5000, Notification.Position.MIDDLE)
                         .addThemeVariants(NotificationVariant.LUMO_ERROR);
@@ -252,7 +321,15 @@ public class ProdottoManagementView extends VerticalLayout {
             }
         });
         
+        upload.addFailedListener(event -> {
+            progressNotification.close();
+            Notification.show("Errore durante il caricamento: " + event.getReason().getMessage(),
+                    5000, Notification.Position.MIDDLE)
+                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
+        });
+        
         upload.addFileRejectedListener(event -> {
+            progressNotification.close();
             Notification.show("File rifiutato: " + event.getErrorMessage(),
                     3000, Notification.Position.MIDDLE)
                     .addThemeVariants(NotificationVariant.LUMO_ERROR);
