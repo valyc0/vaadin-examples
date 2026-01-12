@@ -17,6 +17,12 @@ spring:
             non_contextual_creation: true
         id:
           new_generator_mappings: true
+
+product:
+  upload:
+    remote:
+      url: ${PRODUCT_UPLOAD_REMOTE_URL:http://localhost:8080/api/product-uploads}
+    directory: ${PRODUCT_UPLOAD_DIRECTORY:uploads/products}
 error:
   handling:
     http-status-in-json-response: true

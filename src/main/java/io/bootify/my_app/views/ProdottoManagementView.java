@@ -23,6 +23,7 @@ import com.vaadin.flow.router.Route;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import io.bootify.my_app.domain.Product;
 import io.bootify.my_app.service.ProductService;
+import io.bootify.my_app.service.ProductFileUploadService;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.time.format.DateTimeFormatter;
@@ -33,6 +34,7 @@ import java.util.List;
 public class ProdottoManagementView extends VerticalLayout {
 
     private final ProductService productService;
+    private final ProductFileUploadService uploadService;
     private final Grid<Product> grid;
     private final TextField searchField;
     private final Span statsLabel;
@@ -40,8 +42,9 @@ public class ProdottoManagementView extends VerticalLayout {
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
     @Autowired
-    public ProdottoManagementView(ProductService productService) {
+    public ProdottoManagementView(ProductService productService, ProductFileUploadService uploadService) {
         this.productService = productService;
+        this.uploadService = uploadService;
 
         setSizeFull();
         setPadding(true);
@@ -207,6 +210,62 @@ public class ProdottoManagementView extends VerticalLayout {
     }
 
     private Component createActionsLayout(Product product) {
+        // Create hidden upload component
+        com.vaadin.flow.component.upload.receivers.MemoryBuffer buffer = new com.vaadin.flow.component.upload.receivers.MemoryBuffer();
+        com.vaadin.flow.component.upload.Upload upload = new com.vaadin.flow.component.upload.Upload(buffer);
+        upload.setMaxFiles(1);
+        upload.setMaxFileSize(10 * 1024 * 1024); // 10MB
+        upload.setAcceptedFileTypes(
+                "application/pdf",
+                "image/jpeg", "image/png", "image/gif",
+                "application/msword",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                "application/vnd.ms-excel",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "text/plain"
+        );
+        upload.getStyle().set("display", "none"); // Hide the upload component
+        upload.setAutoUpload(true); // Auto-upload when file is selected
+        
+        // Handle successful upload
+        upload.addSucceededListener(event -> {
+            try {
+                java.io.InputStream inputStream = buffer.getInputStream();
+                String fileName = buffer.getFileName();
+                String contentType = buffer.getFileData().getMimeType();
+                
+                byte[] fileBytes = inputStream.readAllBytes();
+                
+                uploadService.uploadFileForProduct(product.getId(), fileBytes, fileName, 
+                                                  contentType, "admin");
+                
+                Notification.show("File caricato con successo per: " + product.getName(), 
+                        3000, Notification.Position.BOTTOM_START)
+                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                
+                refreshGrid();
+            } catch (Exception ex) {
+                Notification.show("Errore durante il caricamento: " + ex.getMessage(),
+                        5000, Notification.Position.MIDDLE)
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                ex.printStackTrace();
+            }
+        });
+        
+        upload.addFileRejectedListener(event -> {
+            Notification.show("File rifiutato: " + event.getErrorMessage(),
+                    3000, Notification.Position.MIDDLE)
+                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
+        });
+
+        // Upload button that triggers the hidden upload
+        Button uploadButton = new Button(new Icon(VaadinIcon.UPLOAD));
+        uploadButton.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SUCCESS);
+        uploadButton.setTooltipText("Carica file");
+        uploadButton.getElement().addEventListener("click", e -> {
+            upload.getElement().executeJs("this.shadowRoot.querySelector('input[type=file]').click()");
+        });
+
         Button downloadButton = new Button(new Icon(VaadinIcon.DOWNLOAD));
         downloadButton.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_TERTIARY);
         downloadButton.setTooltipText("Scarica file");
@@ -223,7 +282,7 @@ public class ProdottoManagementView extends VerticalLayout {
         deleteButton.setTooltipText("Elimina");
         deleteButton.addClickListener(e -> confirmDelete(product));
 
-        HorizontalLayout actions = new HorizontalLayout(downloadButton, editButton, deleteButton);
+        HorizontalLayout actions = new HorizontalLayout(upload, uploadButton, downloadButton, editButton, deleteButton);
         actions.setSpacing(false);
         return actions;
     }
