@@ -28,6 +28,12 @@ public class Profile {
     @Column(nullable = false)
     private OffsetDateTime lastUpdated;
 
+    @Column
+    private OffsetDateTime validFrom;
+
+    @Column
+    private OffsetDateTime validTo;
+
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(name = "profile_permissions", joinColumns = @JoinColumn(name = "profile_id"), inverseJoinColumns = @JoinColumn(name = "permission_id"))
     private Set<Permission> permissions = new HashSet<>();
@@ -93,6 +99,22 @@ public class Profile {
 
     public void setLastUpdated(OffsetDateTime lastUpdated) {
         this.lastUpdated = lastUpdated;
+    }
+
+    public OffsetDateTime getValidFrom() {
+        return validFrom;
+    }
+
+    public void setValidFrom(OffsetDateTime validFrom) {
+        this.validFrom = validFrom;
+    }
+
+    public OffsetDateTime getValidTo() {
+        return validTo;
+    }
+
+    public void setValidTo(OffsetDateTime validTo) {
+        this.validTo = validTo;
     }
 
     public Set<Permission> getPermissions() {

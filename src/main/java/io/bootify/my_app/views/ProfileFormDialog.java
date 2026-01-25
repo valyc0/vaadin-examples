@@ -3,6 +3,7 @@ package io.bootify.my_app.views;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.checkbox.Checkbox;
+import com.vaadin.flow.component.datetimepicker.DateTimePicker;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.html.Div;
@@ -23,8 +24,12 @@ import io.bootify.my_app.domain.Profile;
 import io.bootify.my_app.service.PermissionService;
 import io.bootify.my_app.service.ProfileService;
 
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.*;
 import java.util.function.Consumer;
+import java.util.Locale;
 
 public class ProfileFormDialog extends Dialog {
 
@@ -37,6 +42,8 @@ public class ProfileFormDialog extends Dialog {
     private TextField nameField;
     private TextArea descriptionField;
     private Checkbox activeCheckbox;
+    private DateTimePicker validFromPicker;
+    private DateTimePicker validToPicker;
     private Map<Long, Checkbox> permissionCheckboxes;
 
     public ProfileFormDialog(Profile profile, ProfileService profileService,
@@ -86,9 +93,25 @@ public class ProfileFormDialog extends Dialog {
         activeCheckbox = new Checkbox("Profilo attivo");
         activeCheckbox.setValue(profile.getId() == null ? true : profile.getActive());
 
+        validFromPicker = new DateTimePicker("Valido da");
+        validFromPicker.setWidthFull();
+        validFromPicker.setHelperText("Data e ora da cui il profilo è valido");
+        validFromPicker.setLocale(Locale.ITALY);
+        validFromPicker.setDatePlaceholder("gg/mm/aaaa");
+        validFromPicker.setTimePlaceholder("hh:mm");
+
+        validToPicker = new DateTimePicker("Valido fino a");
+        validToPicker.setWidthFull();
+        validToPicker.setHelperText("Data e ora fino a cui il profilo è valido");
+        validToPicker.setLocale(Locale.ITALY);
+        validToPicker.setDatePlaceholder("gg/mm/aaaa");
+        validToPicker.setTimePlaceholder("hh:mm");
+
         basicInfoForm.add(nameField, 2);
         basicInfoForm.add(descriptionField, 2);
         basicInfoForm.add(activeCheckbox, 2);
+        basicInfoForm.add(validFromPicker, 1);
+        basicInfoForm.add(validToPicker, 1);
 
         // Binders
         binder.forField(nameField)
@@ -102,6 +125,24 @@ public class ProfileFormDialog extends Dialog {
 
         binder.forField(activeCheckbox)
                 .bind(Profile::getActive, Profile::setActive);
+
+        binder.forField(validFromPicker)
+                .bind(
+                    profile -> profile.getValidFrom() != null ? profile.getValidFrom().toLocalDateTime() : null,
+                    (profile, localDateTime) -> profile.setValidFrom(localDateTime != null ? OffsetDateTime.of(localDateTime, ZoneId.systemDefault().getRules().getOffset(localDateTime)) : null)
+                );
+
+        binder.forField(validToPicker)
+                .withValidator(validTo -> {
+                    if (validTo != null && validFromPicker.getValue() != null) {
+                        return validTo.isAfter(validFromPicker.getValue());
+                    }
+                    return true;
+                }, "La data 'Valido fino a' deve essere successiva a 'Valido da'")
+                .bind(
+                    profile -> profile.getValidTo() != null ? profile.getValidTo().toLocalDateTime() : null,
+                    (profile, localDateTime) -> profile.setValidTo(localDateTime != null ? OffsetDateTime.of(localDateTime, ZoneId.systemDefault().getRules().getOffset(localDateTime)) : null)
+                );
 
         // Permissions section
         H3 permissionsTitle = new H3("Permessi");

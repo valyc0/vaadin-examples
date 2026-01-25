@@ -603,6 +603,56 @@ public class UserManagementView extends VerticalLayout {
                 .setAutoWidth(true)
                 .setSortable(true);
 
+        // Valid from
+        profileGrid.addColumn(new ComponentRenderer<>(profile -> {
+            if (profile.getValidFrom() != null) {
+                Icon icon = new Icon(VaadinIcon.CALENDAR_CLOCK);
+                icon.setSize("14px");
+                icon.getStyle()
+                        .set("margin-right", "var(--lumo-space-xs)")
+                        .set("color", "var(--lumo-success-color)");
+                
+                Span dateSpan = new Span(profile.getValidFrom().format(DATE_FORMATTER));
+                dateSpan.getStyle().set("font-size", "var(--lumo-font-size-s)");
+                
+                HorizontalLayout layout = new HorizontalLayout(icon, dateSpan);
+                layout.setAlignItems(FlexComponent.Alignment.CENTER);
+                layout.setSpacing(false);
+                return layout;
+            }
+            Span empty = new Span("—");
+            empty.getStyle().set("color", "var(--lumo-secondary-text-color)");
+            return empty;
+        }))
+                .setHeader("Valido da")
+                .setAutoWidth(true)
+                .setSortable(true);
+
+        // Valid to
+        profileGrid.addColumn(new ComponentRenderer<>(profile -> {
+            if (profile.getValidTo() != null) {
+                Icon icon = new Icon(VaadinIcon.CALENDAR_CLOCK);
+                icon.setSize("14px");
+                icon.getStyle()
+                        .set("margin-right", "var(--lumo-space-xs)")
+                        .set("color", "var(--lumo-error-color)");
+                
+                Span dateSpan = new Span(profile.getValidTo().format(DATE_FORMATTER));
+                dateSpan.getStyle().set("font-size", "var(--lumo-font-size-s)");
+                
+                HorizontalLayout layout = new HorizontalLayout(icon, dateSpan);
+                layout.setAlignItems(FlexComponent.Alignment.CENTER);
+                layout.setSpacing(false);
+                return layout;
+            }
+            Span empty = new Span("—");
+            empty.getStyle().set("color", "var(--lumo-secondary-text-color)");
+            return empty;
+        }))
+                .setHeader("Valido fino a")
+                .setAutoWidth(true)
+                .setSortable(true);
+
         // Actions
         profileGrid.addColumn(new ComponentRenderer<>(this::createProfileActionsLayout))
                 .setHeader("Azioni")
