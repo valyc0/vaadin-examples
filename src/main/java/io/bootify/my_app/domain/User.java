@@ -32,13 +32,8 @@ public class User {
     @Column(length = 100)
     private String department;
 
-    @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(
-        name = "user_profiles",
-        joinColumns = @JoinColumn(name = "user_id"),
-        inverseJoinColumns = @JoinColumn(name = "profile_id")
-    )
-    private Set<Profile> profiles = new HashSet<>();
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    private Set<UserProfile> userProfiles = new HashSet<>();
 
     @Column(nullable = false)
     private Boolean active = true;
@@ -123,12 +118,27 @@ public class User {
         this.department = department;
     }
 
+    public Set<UserProfile> getUserProfiles() {
+        return userProfiles;
+    }
+
+    public void setUserProfiles(Set<UserProfile> userProfiles) {
+        this.userProfiles = userProfiles;
+    }
+
+    // Helper method per compatibilità
     public Set<Profile> getProfiles() {
-        return profiles;
+        if (userProfiles == null) {
+            return new HashSet<>();
+        }
+        return userProfiles.stream()
+                .map(UserProfile::getProfile)
+                .collect(Collectors.toSet());
     }
 
     public void setProfiles(Set<Profile> profiles) {
-        this.profiles = profiles;
+        // Questo metodo è mantenuto per compatibilità ma non è più usato direttamente
+        // La gestione dei profili passa attraverso userProfiles
     }
 
     public Boolean getActive() {
@@ -176,16 +186,16 @@ public class User {
     }
 
     public String getProfileNames() {
-        if (profiles == null || profiles.isEmpty()) {
+        if (userProfiles == null || userProfiles.isEmpty()) {
             return "Nessun profilo";
         }
-        return profiles.stream()
-                .map(Profile::getName)
+        return userProfiles.stream()
+                .map(up -> up.getProfile().getName())
                 .sorted()
                 .collect(Collectors.joining(", "));
     }
 
     public int getProfileCount() {
-        return profiles != null ? profiles.size() : 0;
+        return userProfiles != null ? userProfiles.size() : 0;
     }
 }

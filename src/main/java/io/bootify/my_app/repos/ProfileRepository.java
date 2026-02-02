@@ -22,10 +22,10 @@ public interface ProfileRepository extends JpaRepository<Profile, Long> {
     @Query("SELECT p FROM Profile p LEFT JOIN FETCH p.permissions WHERE p.id = :id")
     Optional<Profile> findByIdWithPermissions(@Param("id") Long id);
 
-    @Query("SELECT p FROM Profile p LEFT JOIN FETCH p.users")
+    @Query("SELECT DISTINCT p FROM Profile p LEFT JOIN FETCH p.userProfiles")
     List<Profile> findAllWithUsers();
 
-    @Query("SELECT p FROM Profile p LEFT JOIN FETCH p.users WHERE " +
+    @Query("SELECT DISTINCT p FROM Profile p LEFT JOIN FETCH p.userProfiles WHERE " +
             "LOWER(p.name) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
             "LOWER(p.description) LIKE LOWER(CONCAT('%', :searchTerm, '%'))")
     List<Profile> searchProfilesWithUsers(@Param("searchTerm") String searchTerm);

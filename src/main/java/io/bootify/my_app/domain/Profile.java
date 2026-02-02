@@ -38,8 +38,8 @@ public class Profile {
     @JoinTable(name = "profile_permissions", joinColumns = @JoinColumn(name = "profile_id"), inverseJoinColumns = @JoinColumn(name = "permission_id"))
     private Set<Permission> permissions = new HashSet<>();
 
-    @ManyToMany(mappedBy = "profiles")
-    private Set<User> users = new HashSet<>();
+    @OneToMany(mappedBy = "profile")
+    private Set<UserProfile> userProfiles = new HashSet<>();
 
     @PrePersist
     public void prePersist() {
@@ -125,12 +125,26 @@ public class Profile {
         this.permissions = permissions;
     }
 
+    public Set<UserProfile> getUserProfiles() {
+        return userProfiles;
+    }
+
+    public void setUserProfiles(Set<UserProfile> userProfiles) {
+        this.userProfiles = userProfiles;
+    }
+
+    // Helper method per compatibilità
     public Set<User> getUsers() {
-        return users;
+        if (userProfiles == null) {
+            return new HashSet<>();
+        }
+        return userProfiles.stream()
+                .map(UserProfile::getUser)
+                .collect(java.util.stream.Collectors.toSet());
     }
 
     public void setUsers(Set<User> users) {
-        this.users = users;
+        // Questo metodo è mantenuto per compatibilità ma non è più usato direttamente
     }
 
     public int getPermissionCount() {
@@ -138,6 +152,6 @@ public class Profile {
     }
 
     public int getUserCount() {
-        return users != null ? users.size() : 0;
+        return userProfiles != null ? userProfiles.size() : 0;
     }
 }

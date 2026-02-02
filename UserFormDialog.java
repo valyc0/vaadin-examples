@@ -57,9 +57,6 @@ public class UserFormDialog extends Dialog {
     private TextField departmentField;
     private Grid<UserProfileDto> profileGrid;
     private List<UserProfileDto> userProfileDtos = new ArrayList<>();
-    private ComboBox<Profile> profileComboBox;
-    private DatePicker startDatePicker;
-    private DatePicker endDatePicker;
     private TextArea notesField;
     private ComboBox<Boolean> activeComboBox;
     private Div permissionPreview;
@@ -144,24 +141,24 @@ public class UserFormDialog extends Dialog {
         departmentField.setPrefixComponent(new Icon(VaadinIcon.BUILDING));
         departmentField.setPlaceholder("es. IT, Vendite, Amministrazione");
 
-        // Profile Grid - Grid semplice solo per visualizzazione
+        // Profile Grid - Grid con profilo, data inizio e fine
         profileGrid = new Grid<>(UserProfileDto.class, false);
-        profileGrid.setHeight("200px");
+        profileGrid.setHeight("300px");
         
         // Colonna Profilo
-        profileGrid.addColumn(dto -> 
+        Grid.Column<UserProfileDto> profileColumn = profileGrid.addColumn(dto -> 
             dto.getProfile() != null ? dto.getProfile().getName() : "")
             .setHeader("Profilo")
             .setFlexGrow(2);
         
         // Colonna Data Inizio
-        profileGrid.addColumn(dto -> 
+        Grid.Column<UserProfileDto> startDateColumn = profileGrid.addColumn(dto -> 
             dto.getStartDate() != null ? dto.getStartDate().toString() : "")
             .setHeader("Data Inizio")
             .setFlexGrow(1);
         
         // Colonna Data Fine
-        profileGrid.addColumn(dto -> 
+        Grid.Column<UserProfileDto> endDateColumn = profileGrid.addColumn(dto -> 
             dto.getEndDate() != null ? dto.getEndDate().toString() : "")
             .setHeader("Data Fine")
             .setFlexGrow(1);
@@ -170,94 +167,147 @@ public class UserFormDialog extends Dialog {
         profileGrid.addComponentColumn(dto -> {
             Button deleteBtn = new Button(new Icon(VaadinIcon.TRASH));
             deleteBtn.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_ICON);
-            deleteBtn.getElement().setAttribute("title", "Rimuovi profilo");
             deleteBtn.addClickListener(e -> {
                 userProfileDtos.remove(dto);
                 profileGrid.getDataProvider().refreshAll();
-                updateAvailableProfiles();
                 updatePermissionPreview();
             });
             return deleteBtn;
-        }).setHeader("Rimuovi").setFlexGrow(0).setAutoWidth(true);
+        }).setHeader("Azioni").setFlexGrow(0).setAutoWidth(true);
         
-        profileGrid.setItems(userProfileDtos);
-
-        // ComboBox per aggiungere profili
-        profileComboBox = new ComboBox<>("Seleziona Profilo");
+        // Editor per la grid
+        Editor<UserProfileDto> editor = profileGrid.getEditor();
+        Binder<UserProfileDto> editorBinder = new Binder<>(UserProfileDto.class);
+        editor.setBinder(editorBinder);
+        
+        // Editor per profilo
+        ComboBox<Profile> profileComboBox = new ComboBox<>();
         profileComboBox.setItemLabelGenerator(Profile::getName);
         profileComboBox.setWidthFull();
         profileComboBox.setPlaceholder("Seleziona un profilo");
-        profileComboBox.setClearButtonVisible(true);
         
-        // DatePicker per Data Inizio (opzionale)
-        startDatePicker = new DatePicker("Data Inizio (opzionale)");
-        startDatePicker.setPlaceholder("Seleziona data inizio");
-        startDatePicker.setClearButtonVisible(true);
-        startDatePicker.setWidthFull();
+        editorBinder.forField(profileComboBox)
+            .asRequired("Profilo obbligatorio")
+            .withValidator(profile -> {
+                if (profile == null) return true;
+                // Verifica che il profilo non sia già presente in altre righe
+                UserProfileDto currentItem = editor.getItem();
+                boolean isDuplicate = userProfileDtos.stream()
+                    .filter(dto -> dto != currentItem)
+                    .anyMatch(dto -> dto.getProfile() != null && dto.getProfile().getId().equals(profile.getId()));
+                return !isDuplicate;
+            }, "Questo profilo è già stato aggiunto")
+            .bind(UserProfileDto::getProfile, UserProfileDto::setProfile);
+        profileColumn.setEditorComponent(profileComboBox);
         
-        // DatePicker per Data Fine (opzionale)
-        endDatePicker = new DatePicker("Data Fine (opzionale)");
-        endDatePicker.setPlaceholder("Seleziona data fine");
-        endDatePicker.setClearButtonVisible(true);
-        endDatePicker.setWidthFull();
-        
-        // Bottone per aggiungere il profilo
-        Button addProfileBtn = new Button("Aggiungi");
-        addProfileBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        addProfileBtn.setIcon(new Icon(VaadinIcon.PLUS));
-        addProfileBtn.addClickListener(event -> {
-            Profile selectedProfile = profileComboBox.getValue();
-            if (selectedProfile == null) {
-                Notification.show("Seleziona un profilo", 3000, Notification.Position.MIDDLE)
-                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
-                return;
-            }
-            
-            // Controlla se il profilo è già stato aggiunto
-            boolean alreadyAdded = userProfileDtos.stream()
-                .anyMatch(dto -> dto.getProfile() != null && 
-                         dto.getProfile().getId().equals(selectedProfile.getId()));
-            
-            if (alreadyAdded) {
-                Notification.show("Questo profilo è già stato aggiunto", 3000, Notification.Position.MIDDLE)
-                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
-                return;
-            }
-            
-            // Valida le date
-            if (startDatePicker.getValue() != null && endDatePicker.getValue() != null) {
-                if (endDatePicker.getValue().isBefore(startDatePicker.getValue())) {
-                    Notification.show("La data di fine non può essere precedente alla data di inizio", 
-                        3000, Notification.Position.MIDDLE)
-                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
-                    return;
+        // Listener per impedire la selezione di profili duplicati
+        profileComboBox.addValueChangeListener(event -> {
+            if (event.getValue() != null && editor.getItem() != null) {
+                Profile selectedProfile = event.getValue();
+                UserProfileDto currentItem = editor.getItem();
+                
+                // Controlla se il profilo è già stato selezionato in un'altra riga
+                boolean isDuplicate = userProfileDtos.stream()
+                    .filter(dto -> dto != currentItem)
+                    .anyMatch(dto -> dto.getProfile() != null && dto.getProfile().getId().equals(selectedProfile.getId()));
+                
+                if (isDuplicate) {
+                    Notification notification = Notification.show(
+                        "Questo profilo è già stato aggiunto", 
+                        3000, 
+                        Notification.Position.MIDDLE
+                    );
+                    notification.addThemeVariants(NotificationVariant.LUMO_ERROR);
+                    profileComboBox.setValue(null);
                 }
             }
-            
-            // Aggiungi il profilo alla lista con le date
-            UserProfileDto newDto = new UserProfileDto();
-            newDto.setProfile(selectedProfile);
-            newDto.setStartDate(startDatePicker.getValue());
-            newDto.setEndDate(endDatePicker.getValue());
-            userProfileDtos.add(newDto);
-            
-            // Aggiorna la grid
-            profileGrid.getDataProvider().refreshAll();
-            
-            // Aggiorna i profili disponibili
-            updateAvailableProfiles();
-            
-            // Aggiorna l'anteprima dei permessi
-            updatePermissionPreview();
-            
-            // Pulisci i campi
-            profileComboBox.clear();
-            startDatePicker.clear();
-            endDatePicker.clear();
         });
+        
+        // Quando si apre l'editor, aggiorna la lista dei profili disponibili
+        editor.addOpenListener(e -> {
+            UserProfileDto currentItem = e.getItem();
+            updateAvailableProfilesForComboBox(profileComboBox, currentItem);
+            
+            // Se non ci sono profili disponibili, mostra un messaggio
+            if (profileComboBox.getListDataView().getItemCount() == 0) {
+                Notification notification = Notification.show(
+                    "Tutti i profili disponibili sono già stati aggiunti", 
+                    3000, 
+                    Notification.Position.MIDDLE
+                );
+                notification.addThemeVariants(NotificationVariant.LUMO_WARNING);
+                editor.cancel();
+            }
+        });
+        
+        // Editor per data inizio
+        DatePicker startDatePicker = new DatePicker();
+        startDatePicker.setWidthFull();
+        startDatePicker.setPlaceholder("Opzionale");
+        editorBinder.forField(startDatePicker)
+            .bind(UserProfileDto::getStartDate, UserProfileDto::setStartDate);
+        startDateColumn.setEditorComponent(startDatePicker);
+        
+        // Editor per data fine
+        DatePicker endDatePicker = new DatePicker();
+        endDatePicker.setWidthFull();
+        endDatePicker.setPlaceholder("Opzionale");
+        editorBinder.forField(endDatePicker)
+            .bind(UserProfileDto::getEndDate, UserProfileDto::setEndDate);
+        endDateColumn.setEditorComponent(endDatePicker);
+        
+        // Abilita edit al doppio click
+        profileGrid.addItemDoubleClickListener(e -> {
+            editor.editItem(e.getItem());
+            profileComboBox.focus();
+        });
+        
+        // Salva le modifiche quando si chiude l'editor
+        editor.addCloseListener(e -> {
+            UserProfileDto editedItem = e.getItem();
+            
+            // Se l'editor viene chiuso senza salvare o il profilo è null, rimuovi la riga vuota
+            if (editedItem.getProfile() == null) {
+                userProfileDtos.remove(editedItem);
+            }
+            
+            profileGrid.getDataProvider().refreshAll();
+            updatePermissionPreview();
+        });
+        
+        profileGrid.setItems(userProfileDtos);
 
-        // Inizializza i profili disponibili
-        updateAvailableProfiles();
+        // Bottone per aggiungere nuovo profilo
+        Button addProfileButton = new Button("Aggiungi profilo");
+        addProfileButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_SMALL);
+        addProfileButton.setIcon(new Icon(VaadinIcon.PLUS));
+        addProfileButton.addClickListener(e -> {
+            // Verifica se ci sono ancora profili disponibili
+            List<Profile> alreadySelected = userProfileDtos.stream()
+                .filter(dto -> dto.getProfile() != null)
+                .map(UserProfileDto::getProfile)
+                .toList();
+            
+            List<Profile> availableProfiles = profileService.findActive().stream()
+                .filter(p -> !alreadySelected.contains(p))
+                .toList();
+            
+            if (availableProfiles.isEmpty()) {
+                Notification notification = Notification.show(
+                    "Tutti i profili disponibili sono già stati aggiunti", 
+                    3000, 
+                    Notification.Position.MIDDLE
+                );
+                notification.addThemeVariants(NotificationVariant.LUMO_WARNING);
+                return;
+            }
+            
+            UserProfileDto newDto = new UserProfileDto();
+            userProfileDtos.add(newDto);
+            profileGrid.getDataProvider().refreshAll();
+            editor.editItem(newDto);
+            profileComboBox.focus();
+        });
 
         // Create profile button
         Button createProfileButton = new Button("Crea nuovo profilo");
@@ -277,36 +327,22 @@ public class UserFormDialog extends Dialog {
             profileInfo.add(infoText);
         }
 
-        // Profile layout with grid and combobox
+        // Profile layout with grid and buttons
         VerticalLayout profileLayout = new VerticalLayout();
         profileLayout.setPadding(false);
         profileLayout.setSpacing(true);
         
-        Span profileLabel = new Span("Profili");
+        Span profileLabel = new Span("Profili e Date di Validità");
         profileLabel.getStyle()
             .set("font-weight", "500")
             .set("font-size", "var(--lumo-font-size-s)")
             .set("color", "var(--lumo-secondary-text-color)");
         
-        // Layout per i campi di input profilo
-        FormLayout profileInputLayout = new FormLayout();
-        profileInputLayout.setResponsiveSteps(
-            new FormLayout.ResponsiveStep("0", 1),
-            new FormLayout.ResponsiveStep("500px", 3));
-        profileInputLayout.add(profileComboBox, startDatePicker, endDatePicker);
-        profileInputLayout.setColspan(profileComboBox, 1);
-        profileInputLayout.setColspan(startDatePicker, 1);
-        profileInputLayout.setColspan(endDatePicker, 1);
-        
-        HorizontalLayout addLayout = new HorizontalLayout(addProfileBtn);
-        addLayout.setPadding(false);
-        addLayout.setSpacing(false);
-        
-        HorizontalLayout buttonLayout = new HorizontalLayout(createProfileButton);
+        HorizontalLayout buttonLayout = new HorizontalLayout(addProfileButton, createProfileButton);
         buttonLayout.setSpacing(true);
         buttonLayout.setPadding(false);
         
-        profileLayout.add(profileLabel, profileInputLayout, addLayout, profileGrid, buttonLayout);
+        profileLayout.add(profileLabel, profileGrid, buttonLayout);
         if (!profileInfo.getChildren().findAny().isEmpty()) {
             profileLayout.add(profileInfo);
         }
@@ -647,21 +683,27 @@ public class UserFormDialog extends Dialog {
         }
     }
     
-    private void updateAvailableProfiles() {
-        // Ottieni i profili già selezionati
+    private void updateAvailableProfilesForComboBox(ComboBox<Profile> comboBox, UserProfileDto currentItem) {
+        // Ottieni i profili già selezionati (escluso quello corrente in editing)
         List<Profile> selectedProfiles = userProfileDtos.stream()
+            .filter(dto -> dto != currentItem)
             .filter(dto -> dto.getProfile() != null)
             .map(UserProfileDto::getProfile)
             .toList();
         
-        // Filtra i profili disponibili escludendo quelli già aggiunti
-        List<Profile> availableProfiles = profileService.findActive().stream()
-            .filter(p -> !selectedProfiles.contains(p))
-            .toList();
+        // Filtra i profili disponibili escludendo quelli già usati
+        List<Profile> availableProfiles = new java.util.ArrayList<>(
+            profileService.findActive().stream()
+                .filter(p -> !selectedProfiles.contains(p))
+                .toList()
+        );
         
-        // Aggiorna la combobox con i profili disponibili
-        if (profileComboBox != null) {
-            profileComboBox.setItems(availableProfiles);
+        // Aggiungi sempre il profilo correntemente selezionato se esiste
+        if (currentItem.getProfile() != null && !availableProfiles.contains(currentItem.getProfile())) {
+            availableProfiles.add(currentItem.getProfile());
+            availableProfiles.sort((p1, p2) -> p1.getName().compareTo(p2.getName()));
         }
+        
+        comboBox.setItems(availableProfiles);
     }
 }

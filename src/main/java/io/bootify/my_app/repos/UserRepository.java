@@ -16,7 +16,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     List<User> findByActive(Boolean active);
 
-    @Query("SELECT DISTINCT u FROM User u JOIN u.profiles p WHERE p.id = :profileId")
+    @Query("SELECT DISTINCT u FROM User u JOIN u.userProfiles up WHERE up.profile.id = :profileId")
     List<User> findByProfilesId(@Param("profileId") Long profileId);
 
     @Query("SELECT u FROM User u WHERE " +
@@ -30,6 +30,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query("SELECT COUNT(u) FROM User u WHERE u.active = true")
     long countActiveUsers();
 
-    @Query("SELECT DISTINCT u FROM User u LEFT JOIN FETCH u.profiles WHERE u.id = :id")
+    @Query("SELECT DISTINCT u FROM User u LEFT JOIN FETCH u.userProfiles WHERE u.id = :id")
     Optional<User> findByIdWithProfiles(@Param("id") Long id);
 }
