@@ -30,6 +30,9 @@ public class GoogleSearchView extends Div {
     private final TextField messageInput;
     private final Button chatbotFab;
     private boolean isChatOpen = false;
+    private int currentPage = 1;
+    private String currentQuery = "java programming";
+    private int resultsPerPage = 6;
     private static final String AI_RESPONSE = "Ciao! Sono un assistente virtuale. Posso aiutarti con qualsiasi domanda! 🤖";
 
     public GoogleSearchView() {
@@ -113,10 +116,10 @@ public class GoogleSearchView extends Div {
         header.getStyle()
                 .set("background-color", "white")
                 .set("border-bottom", "1px solid var(--lumo-contrast-10pct)")
-                .set("padding", "20px 40px");
+                .set("padding", "20px 200px");
 
         // Google-style logo
-        H2 logo = new H2("Google");
+        H2 logo = new H2();
         logo.getStyle()
                 .set("margin", "0")
                 .set("color", "#4285f4")
@@ -138,7 +141,7 @@ public class GoogleSearchView extends Div {
             String query = searchField.getValue();
             if (!query.isEmpty()) {
                 searchResultsContainer.removeAll();
-                addSimulatedResults(query);
+                addSimulatedResults(query, 1);
             }
         });
 
@@ -147,7 +150,7 @@ public class GoogleSearchView extends Div {
                 String query = searchField.getValue();
                 if (!query.isEmpty()) {
                     searchResultsContainer.removeAll();
-                    addSimulatedResults(query);
+                    addSimulatedResults(query, 1);
                 }
             }
         });
@@ -155,20 +158,23 @@ public class GoogleSearchView extends Div {
         HorizontalLayout searchBar = new HorizontalLayout(searchField, searchButton);
         searchBar.setDefaultVerticalComponentAlignment(FlexComponent.Alignment.CENTER);
         searchBar.setWidthFull();
-        searchBar.getStyle().set("max-width", "650px");
+        searchBar.getStyle().set("max-width", "700px");
 
         header.add(logo, searchBar);
-        header.setDefaultVerticalComponentAlignment(FlexComponent.Alignment.CENTER);
+        //header.setDefaultVerticalComponentAlignment(FlexComponent.Alignment.CENTER);
         header.expand(searchBar);
 
         return header;
     }
 
     private void addSimulatedResults() {
-        addSimulatedResults("java programming");
+        addSimulatedResults("java programming", 1);
     }
 
-    private void addSimulatedResults(String query) {
+    private void addSimulatedResults(String query, int page) {
+        currentQuery = query;
+        currentPage = page;
+        
         Paragraph resultsInfo = new Paragraph("Circa 1.250.000 risultati (0,45 secondi)");
         resultsInfo.getStyle()
                 .set("color", "var(--lumo-secondary-text-color)")
@@ -176,76 +182,90 @@ public class GoogleSearchView extends Div {
                 .set("margin-top", "10px");
         searchResultsContainer.add(resultsInfo);
 
-        List<SearchResult> results = generateSearchResults(query);
+        List<SearchResult> results = generateSearchResults(query, page);
         for (SearchResult result : results) {
             searchResultsContainer.add(createSearchResultCard(result));
         }
+        
+        // Add pagination controls
+        searchResultsContainer.add(createPaginationControls());
     }
 
-    private List<SearchResult> generateSearchResults(String query) {
+    private List<SearchResult> generateSearchResults(String query, int page) {
         List<SearchResult> results = new ArrayList<>();
         
-        results.add(new SearchResult(
-                "Java Programming - Official Documentation",
-                "https://docs.oracle.com/javase/tutorial/",
-                "The Java™ Tutorials are practical guides for programmers who want to use the Java programming language to create applications. They include hundreds of complete, working examples...",
-                "Oracle",
-                null,
-                null
-        ));
+        // Generate results based on resultsPerPage
+        int startIndex = (page - 1) * resultsPerPage;
+        
+        for (int i = 0; i < resultsPerPage; i++) {
+            int resultNumber = startIndex + i + 1;
+            
+            if (i == 0) {
+                // First result with page indicator
+                results.add(new SearchResult(
+                        "[Pagina " + page + ", Risultato " + resultNumber + "] Java Programming - Official Documentation",
+                        "https://docs.oracle.com/javase/tutorial/?page=" + page,
+                        "The Java™ Tutorials are practical guides for programmers who want to use the Java programming language to create applications. They include hundreds of complete, working examples... (Risultato #" + resultNumber + " della pagina " + page + ")",
+                        "Oracle",
+                        null,
+                        null
+                ));
+            } else if (i == 1) {
+                results.add(new SearchResult(
+                        "Learn " + query + " - Step by Step Guide (Risultato #" + resultNumber + ")",
+                        "https://www.example.com/guide?page=" + page,
+                        "Comprehensive guide to " + query + ". Start from basics and advance to expert level. Updated with latest features and best practices for 2025. (Pagina " + page + ", risultato " + resultNumber + ")",
+                        "Example Learning Platform",
+                        null,
+                        null
+                ));
+            } else if (i == 2) {
+                // File results
+                List<FileAttachment> pdfFiles = new ArrayList<>();
+                pdfFiles.add(new FileAttachment("Introduction_to_" + query.replace(" ", "_") + ".pdf", "PDF", "2.4 MB"));
+                pdfFiles.add(new FileAttachment("Advanced_" + query.replace(" ", "_") + "_Guide.pdf", "PDF", "5.1 MB"));
+                pdfFiles.add(new FileAttachment(query.replace(" ", "_") + "_Best_Practices.docx", "DOCX", "1.8 MB"));
+                pdfFiles.add(new FileAttachment(query.replace(" ", "_") + "_Cheat_Sheet.pdf", "PDF", "850 KB"));
 
-        results.add(new SearchResult(
-                "Learn " + query + " - Step by Step Guide",
-                "https://www.example.com/guide",
-                "Comprehensive guide to " + query + ". Start from basics and advance to expert level. Updated with latest features and best practices for 2025.",
-                "Example Learning Platform",
-                null,
-                null
-        ));
-
-        // File results
-        List<FileAttachment> pdfFiles = new ArrayList<>();
-        pdfFiles.add(new FileAttachment("Introduction_to_" + query.replace(" ", "_") + ".pdf", "PDF", "2.4 MB"));
-        pdfFiles.add(new FileAttachment("Advanced_" + query.replace(" ", "_") + "_Guide.pdf", "PDF", "5.1 MB"));
-        pdfFiles.add(new FileAttachment(query.replace(" ", "_") + "_Best_Practices.docx", "DOCX", "1.8 MB"));
-        pdfFiles.add(new FileAttachment(query.replace(" ", "_") + "_Cheat_Sheet.pdf", "PDF", "850 KB"));
-
-        results.add(new SearchResult(
-                query + " - Documentation and Resources",
-                "https://www.resources.com/" + query.replace(" ", "-"),
-                "Comprehensive collection of documentation, tutorials, and reference materials for " + query + ". Download PDF guides, watch video tutorials, and access code examples.",
-                "Resources.com",
-                pdfFiles,
-                null
-        ));
-
-        // Video result
-        results.add(new SearchResult(
-                query + " - Complete Video Tutorial",
-                "https://www.example.com/video",
-                "Watch this comprehensive video tutorial covering all aspects of " + query + ". Duration: 45:30. Perfect for visual learners.",
-                "Video Platform",
-                null,
-                "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
-        ));
-
-        results.add(new SearchResult(
-                "Stack Overflow - " + query + " Questions",
-                "https://stackoverflow.com/questions/tagged/" + query.replace(" ", "+"),
-                "Browse thousands of questions and answers about " + query + ". Get help from the community and learn from real-world problems.",
-                "Stack Overflow",
-                null,
-                null
-        ));
-
-        results.add(new SearchResult(
-                "GitHub - " + query + " Projects",
-                "https://github.com/topics/" + query.replace(" ", "-"),
-                "Explore open source " + query + " projects on GitHub. Browse repositories, contribute to projects, and learn from other developers' code.",
-                "GitHub",
-                null,
-                null
-        ));
+                results.add(new SearchResult(
+                        query + " - Documentation and Resources (#" + resultNumber + ")",
+                        "https://www.resources.com/" + query.replace(" ", "-"),
+                        "Comprehensive collection of documentation, tutorials, and reference materials for " + query + ". Download PDF guides, watch video tutorials, and access code examples. (Risultato " + resultNumber + ")",
+                        "Resources.com",
+                        pdfFiles,
+                        null
+                ));
+            } else if (i == 3) {
+                // Video result
+                results.add(new SearchResult(
+                        query + " - Complete Video Tutorial (Risultato #" + resultNumber + ")",
+                        "https://www.example.com/video",
+                        "Watch this comprehensive video tutorial covering all aspects of " + query + ". Duration: 45:30. Perfect for visual learners. (Risultato " + resultNumber + " - Pagina " + page + ")",
+                        "Video Platform",
+                        null,
+                        "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
+                ));
+            } else if (i == 4) {
+                results.add(new SearchResult(
+                        "Stack Overflow - " + query + " Questions (Risultato #" + resultNumber + ")",
+                        "https://stackoverflow.com/questions/tagged/" + query.replace(" ", "+"),
+                        "Browse thousands of questions and answers about " + query + ". Get help from the community and learn from real-world problems. (Risultato " + resultNumber + ", Pagina " + page + ")",
+                        "Stack Overflow",
+                        null,
+                        null
+                ));
+            } else {
+                // Additional generic results
+                results.add(new SearchResult(
+                        query + " - Resource #" + resultNumber + " (Page " + page + ")",
+                        "https://www.example" + i + ".com/" + query.replace(" ", "-"),
+                        "Additional resource for " + query + ". This is result number " + resultNumber + " on page " + page + ". Learn more about " + query + " with this comprehensive guide and examples.",
+                        "Example Resource " + i,
+                        null,
+                        null
+                ));
+            }
+        }
 
         return results;
     }
@@ -386,6 +406,83 @@ public class GoogleSearchView extends Div {
             case "ZIP", "RAR" -> "#616161";
             default -> "var(--lumo-secondary-text-color)";
         };
+    }
+
+    private Component createPaginationControls() {
+        HorizontalLayout pagination = new HorizontalLayout();
+        pagination.setSpacing(true);
+        pagination.setPadding(true);
+        pagination.setDefaultVerticalComponentAlignment(FlexComponent.Alignment.CENTER);
+        pagination.getStyle()
+                .set("margin-top", "20px")
+                .set("margin-bottom", "20px");
+
+        // Previous button
+        Button prevButton = new Button("Indietro");
+        prevButton.setEnabled(currentPage > 1);
+        prevButton.addClickListener(e -> {
+            if (currentPage > 1) {
+                searchResultsContainer.removeAll();
+                addSimulatedResults(currentQuery, currentPage - 1);
+                scrollToTop();
+            }
+        });
+
+        // Page numbers
+        HorizontalLayout pageNumbers = new HorizontalLayout();
+        pageNumbers.setSpacing(false);
+        
+        int startPage = Math.max(1, currentPage - 2);
+        int endPage = Math.min(10, currentPage + 2);
+        
+        for (int i = startPage; i <= endPage; i++) {
+            final int pageNum = i;
+            Button pageButton = new Button(String.valueOf(i));
+            
+            if (i == currentPage) {
+                pageButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+            } else {
+                pageButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+            }
+            
+            pageButton.getStyle()
+                    .set("min-width", "40px")
+                    .set("margin", "0 2px");
+            
+            pageButton.addClickListener(e -> {
+                searchResultsContainer.removeAll();
+                addSimulatedResults(currentQuery, pageNum);
+                scrollToTop();
+            });
+            
+            pageNumbers.add(pageButton);
+        }
+
+        // Next button
+        Button nextButton = new Button("Avanti");
+        nextButton.setEnabled(currentPage < 10);
+        nextButton.addClickListener(e -> {
+            if (currentPage < 10) {
+                searchResultsContainer.removeAll();
+                addSimulatedResults(currentQuery, currentPage + 1);
+                scrollToTop();
+            }
+        });
+
+        pagination.add(prevButton, pageNumbers, nextButton);
+        return pagination;
+    }
+
+    private void scrollToTop() {
+        getUI().ifPresent(ui -> {
+            ui.beforeClientResponse(this, context -> {
+                ui.getPage().executeJs(
+                    "const container = document.querySelector('.google-search-view');" +
+                    "if (container) { container.scrollTo({top: 0, behavior: 'smooth'}); }" +
+                    "window.scrollTo({top: 0, behavior: 'smooth'});"
+                );
+            });
+        });
     }
 
     private Button createChatbotFab() {
