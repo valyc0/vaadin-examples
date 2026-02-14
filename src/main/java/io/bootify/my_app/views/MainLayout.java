@@ -50,6 +50,7 @@ public class MainLayout extends AppLayout {
                 createNavItem("Generic Grid", GenericGridView.class, VaadinIcon.TABLE),
                 createNavItem("Gestione Contenuti", ContentManagementView.class, VaadinIcon.EDIT),
                 createNavItem("Ricerca Documenti", SearchView.class, VaadinIcon.SEARCH),
+                createNavItem("Gestione Struttura", TreeStructureManagementView.class, VaadinIcon.TREE_TABLE),
                 createNavItem("AI Chatbot", ChatbotView.class, VaadinIcon.COMMENT_ELLIPSIS),
                 createNavItem("Google Search", GoogleSearchView.class, VaadinIcon.GLOBE)
         );
