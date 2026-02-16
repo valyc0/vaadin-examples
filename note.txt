@@ -1,6 +1,15 @@
 Vai ai contenuti
 Cronologia chat
 
+String hash = HexFormat.of().formatHex(
+    MessageDigest.getInstance("SHA-256").digest(
+        page.getContent().stream()
+            .sorted(Comparator.comparing(ContentDto::getId))
+            .map(c -> c.getId() + "|" + c.getUpdatedDate())
+            .collect(Collectors.joining())
+            .getBytes(StandardCharsets.UTF_8)
+    )
+);
 
 
 
