@@ -1,3 +1,82 @@
+cosa è meglio fare grid.setItems(...)
+oppure
+dataProvider.refreshAll()?
+
+In Vaadin 24 la scelta tra
+
+grid.setItems(...)
+
+
+e
+
+dataProvider.refreshAll()
+
+
+non è solo stilistica 👉 cambia proprio il modo in cui la Grid vive.
+
+Ti faccio il confronto reale da produzione 👇
+
+🥇 RISPOSTA BREVE
+
+✅ Nella tua situazione → meglio dataProvider.refreshAll()
+
+❌ setItems() usalo solo per inizializzare o per casi semplici.
+
+🔍 DIFFERENZA ARCHITETTURALE
+🔴 grid.setItems(...)
+
+Ogni volta che lo chiami:
+
+viene creato un nuovo DataProvider
+
+la Grid:
+
+resetta il virtual scroll
+
+perde la selezione
+
+ricrea i componenti nelle righe
+
+perde editor aperti
+
+può interrompere upload/download in cella
+
+💥 è un rebuild completo
+
+👉 costoso e “distruttivo”
+
+🟢 dataProvider.refreshAll()
+
+il DataProvider resta lo stesso
+
+Vaadin fa solo un re-query dei dati
+
+mantiene:
+
+✅ scroll
+✅ selezione
+✅ componenti per riga
+✅ editor
+✅ upload in corso
+✅ focus utente
+
+⚡ molto più performante
+
+📊 PERFORMANCE (con polling ogni 5 secondi)
+
+Con setItems():
+
+repaint completo
+
+flicker
+
+garbage objects
+
+CPU lato server + client
+
+
+
+
 Vai ai contenuti
 Cronologia chat
 
