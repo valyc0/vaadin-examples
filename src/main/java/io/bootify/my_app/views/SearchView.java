@@ -2,13 +2,11 @@ package io.bootify.my_app.views;
 
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
-import com.vaadin.flow.component.checkbox.Checkbox;
 import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.details.Details;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
-import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.Icon;
@@ -20,12 +18,10 @@ import com.vaadin.flow.component.orderedlayout.FlexLayout;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextField;
-import com.vaadin.flow.component.treegrid.TreeGrid;
-import com.vaadin.flow.data.renderer.ComponentRenderer;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
+import io.bootify.my_app.component.StructuredTree;
 import io.bootify.my_app.dto.DocumentSearchFilterDTO;
-import io.bootify.my_app.model.TreeResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,7 +47,7 @@ public class SearchView extends VerticalLayout {
     private final TextField metaKey = new TextField("Metadato chiave");
     private final TextField metaValue = new TextField("Metadato valore");
 
-    private final TreeGrid<TreeResponse> tree = new TreeGrid<>();
+    private final StructuredTree structuredTree = new StructuredTree();
 
     private final Details generalFiltersDetails = new Details();
     private final Details metadataFiltersDetails = new Details();
@@ -63,8 +59,6 @@ public class SearchView extends VerticalLayout {
     private final Button modifyFiltersButton = new Button("Modifica Filtri", new Icon(VaadinIcon.EDIT));
     private final Button filterButton = new Button("Cerca Documenti", new Icon(VaadinIcon.SEARCH));
     private final Button resetButton = new Button("Pulisci Filtri", new Icon(VaadinIcon.ERASER));
-
-    private TreeResponse selectedTreeItem;
 
     public SearchView() {
         setSizeFull();
@@ -232,53 +226,8 @@ public class SearchView extends VerticalLayout {
         metadataFiltersDetails.setContent(metaLayout);
         metadataFiltersDetails.setOpened(false);
 
-        // Colonna checkbox per la selezione
-        tree.addComponentColumn(item -> {
-            Checkbox checkbox = new Checkbox();
-            checkbox.setValue(item.equals(selectedTreeItem));
-            checkbox.addValueChangeListener(event -> {
-                if (event.getValue()) {
-                    // Deseleziona tutti gli altri prima di selezionare questo
-                    TreeResponse previousSelection = selectedTreeItem;
-                    selectedTreeItem = item;
-                    
-                    // Refresh completo per aggiornare tutte le checkbox
-                    tree.getDataCommunicator().reset();
-                    
-                    Notification.show(
-                        "Selezionato: " + item.getDescrizione(),
-                        2000,
-                        Notification.Position.BOTTOM_CENTER
-                    );
-                } else {
-                    // Deseleziona solo se è l'item correntemente selezionato
-                    if (item.equals(selectedTreeItem)) {
-                        selectedTreeItem = null;
-                        tree.getDataCommunicator().reset();
-                    }
-                }
-            });
-            return checkbox;
-        }).setHeader("").setWidth("80px").setFlexGrow(0);
-        
-        tree.addHierarchyColumn(TreeResponse::getDescrizione)
-            .setHeader("Elemento")
-            .setFlexGrow(3)
-            .setWidth("400px");
-        
-        List<TreeResponse> treeData = generateTreeExample();
-        tree.setItems(treeData, TreeResponse::getChildren);
-        tree.setSelectionMode(Grid.SelectionMode.NONE);
-        tree.setWidth("100%");
-        tree.getStyle().set("min-width", "800px");
-        tree.setHeight("350px");
-        tree.getStyle().set("font-size", "var(--lumo-font-size-m)");
-
-        // Pre-selezione elemento TR01 con ricerca ricorsiva
-        selectedTreeItem = findAndExpandTreeItem(treeData, "TR01");
-
         treeDetails.setSummaryText("Filtro Strutturato");
-        treeDetails.setContent(tree);
+        treeDetails.setContent(structuredTree);
         treeDetails.setOpened(false);
 
         add(generalFiltersDetails, metadataFiltersDetails, treeDetails);
@@ -361,8 +310,8 @@ public class SearchView extends VerticalLayout {
             metaValue.getValue() != null && !metaValue.getValue().isEmpty()) {
             addFilterBadge(metaKey.getValue(), metaValue.getValue());
         }
-        if (selectedTreeItem != null) {
-            addFilterBadge("Struttura", selectedTreeItem.getDescrizione());
+        if (structuredTree.getSelectedItem() != null) {
+            addFilterBadge("Struttura", structuredTree.getSelectedItem().getDescrizione());
         }
         
         boolean hasFilters = filtersSummary.getChildren().count() > 0;
@@ -437,10 +386,10 @@ public class SearchView extends VerticalLayout {
         filter.setMetadataValore(metaValue.getValue());
         
         // Filtro strutturato (tree)
-        if (selectedTreeItem != null) {
-            filter.setStrutturaCode(selectedTreeItem.getCode());
-            filter.setStrutturaType(selectedTreeItem.getType());
-            filter.setStrutturaDescrizione(selectedTreeItem.getDescrizione());
+        if (structuredTree.getSelectedItem() != null) {
+            filter.setStrutturaCode(structuredTree.getSelectedItem().getCode());
+            filter.setStrutturaType(structuredTree.getSelectedItem().getType());
+            filter.setStrutturaDescrizione(structuredTree.getSelectedItem().getDescrizione());
         }
         
         return filter;
@@ -470,8 +419,7 @@ public class SearchView extends VerticalLayout {
         tags.clear();
         metaKey.clear();
         metaValue.clear();
-        selectedTreeItem = null;
-        tree.deselectAll();
+        structuredTree.clearSelection();
         
         Notification.show("Filtri azzerati", 2000, Notification.Position.BOTTOM_CENTER);
     }
@@ -565,59 +513,6 @@ public class SearchView extends VerticalLayout {
             .set("font-size", "var(--lumo-font-size-s)")
             .set("font-weight", "500");
         filtersSummary.add(badge);
-    }
-
-    private String StreamNonNull(String label, String value) {
-        return (value != null && !value.isEmpty()) ? label + "=" + value + ", " : "";
-    }
-
-    private String StreamNonNull(String label, String key, String val) {
-        return (key != null && !key.isEmpty() && val != null && !val.isEmpty()) ? label + "=" + key + ":" + val + ", " : "";
-    }
-
-    private List<TreeResponse> generateTreeExample() {
-        TreeResponse comp1 = new TreeResponse("CT01", "Complesso", "Sicurezza Nazionale");
-        TreeResponse area1 = new TreeResponse("AR01", "Area", "Intelligence");
-        TreeResponse tr1 = new TreeResponse("TR01", "Trattazione", "Analisi Strategica");
-        area1.getChildren().add(tr1);
-        comp1.getChildren().add(area1);
-
-        TreeResponse comp2 = new TreeResponse("CT02", "Complesso", "Innovazione Tecnologica");
-        TreeResponse area2 = new TreeResponse("AR02", "Area", "Cybersecurity");
-        TreeResponse tr2 = new TreeResponse("TR02", "Trattazione", "Minacce Informatiche");
-        area2.getChildren().add(tr2);
-        comp2.getChildren().add(area2);
-
-        return List.of(comp1, comp2);
-    }
-
-    /**
-     * Cerca ricorsivamente un elemento nell'albero per codice ed espande tutti i nodi parent
-     * @param items Lista di elementi da cercare
-     * @param targetCode Codice dell'elemento da trovare
-     * @return L'elemento trovato o null se non esiste
-     */
-    private TreeResponse findAndExpandTreeItem(List<TreeResponse> items, String targetCode) {
-        if (items == null || targetCode == null) {
-            return null;
-        }
-        
-        for (TreeResponse item : items) {
-            // Controlla se questo è l'elemento cercato
-            if (targetCode.equals(item.getCode())) {
-                return item;
-            }
-            
-            // Cerca ricorsivamente nei figli
-            TreeResponse found = findAndExpandTreeItem(item.getChildren(), targetCode);
-            if (found != null) {
-                // Espandi questo nodo perché contiene l'elemento cercato
-                tree.expand(item);
-                return found;
-            }
-        }
-        
-        return null;
     }
 
     public static class FileResultDTO {

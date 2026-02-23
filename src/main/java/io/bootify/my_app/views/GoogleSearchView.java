@@ -18,6 +18,7 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
+import io.bootify.my_app.component.StructuredTree;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -53,6 +54,7 @@ public class GoogleSearchView extends Div {
 
     // Filter components
     private Details filtersDetails;
+    private StructuredTree structuredTree;
     private MultiSelectComboBox<String> fileTypeFilter;
     private ComboBox<String> dateRangeFilter;
     private DatePicker dateFromPicker;
@@ -309,8 +311,17 @@ public class GoogleSearchView extends Div {
 
         filtersRow.add(fileTypeFilter, dateRangeFilter, customDateContainer, resetFiltersBtn);
 
+        // Struttura ad albero
+        structuredTree = new StructuredTree();
+        Details treeDetails = new Details("Filtro Strutturato", structuredTree);
+        treeDetails.setOpened(false);
+
+        VerticalLayout filtersContent = new VerticalLayout(filtersRow, treeDetails);
+        filtersContent.setPadding(false);
+        filtersContent.setSpacing(true);
+
         // Crea Details collassabile
-        Details details = new Details("Filtri di ricerca", filtersRow);
+        Details details = new Details("Filtri di ricerca", filtersContent);
         details.setOpened(false);
         details.getStyle()
                 .set("background-color", "#f8f9fa")
