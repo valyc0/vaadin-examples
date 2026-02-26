@@ -153,6 +153,10 @@ public class ContentManagementView extends VerticalLayout {
                 .setHeader("Azioni")
                 .setAutoWidth(true)
                 .setFlexGrow(0);
+
+        // Detail inline: clic sulla riga apre il pannello sotto quella riga
+        contentGrid.getGrid().setItemDetailsRenderer(new ComponentRenderer<>(this::buildRowDetail));
+        contentGrid.getGrid().setDetailsVisibleOnClick(true);
     }
     
     private Component createActionsLayout(Content content) {
@@ -452,6 +456,47 @@ public class ContentManagementView extends VerticalLayout {
         }
     }
     
+    private Component buildRowDetail(Content content) {
+        FormLayout form = new FormLayout();
+        form.setResponsiveSteps(
+                new FormLayout.ResponsiveStep("0", 1),
+                new FormLayout.ResponsiveStep("600px", 2)
+        );
+        form.getStyle().set("padding", "var(--lumo-space-m)");
+
+        form.addFormItem(label(content.getId() != null ? content.getId().toString() : "—"), "ID");
+        form.addFormItem(label(content.getFileName()), "Nome File");
+        form.addFormItem(label(content.getFormattedFileSize()), "Dimensione");
+        form.addFormItem(label(content.getFileType()), "Tipo File");
+        form.addFormItem(label(content.getMimeType()), "MIME Type");
+        form.addFormItem(label(content.getCategory()), "Categoria");
+        form.addFormItem(label(content.getTags()), "Tags");
+        form.addFormItem(label(content.getUploadUser()), "Caricato da");
+        form.addFormItem(label(content.getOriginalPath()), "Percorso Originale");
+        form.addFormItem(label(content.getFileHash()), "Hash File");
+        form.addFormItem(label(content.getCreationDate() != null
+                ? content.getCreationDate().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss")) : null),
+                "Data Creazione");
+        form.addFormItem(label(content.getLastModified() != null
+                ? content.getLastModified().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss")) : null),
+                "Ultima Modifica");
+
+        if (content.getDescription() != null && !content.getDescription().isEmpty()) {
+            Span desc = new Span(content.getDescription());
+            desc.getStyle().set("white-space", "pre-wrap");
+            form.setColspan(form.addFormItem(desc, "Descrizione"), 2);
+        }
+
+        parseCustomMetadata(content.getCustomMetadata())
+                .forEach((key, value) -> form.addFormItem(label(value), key));
+
+        return form;
+    }
+
+    private Span label(String value) {
+        return new Span(value != null && !value.isBlank() ? value : "—");
+    }
+
     private void updateTotalLabel() {
         String searchTerm = searchField.getValue() != null ? searchField.getValue() : "";
         String fileType = fileTypeFilter.getValue() != null && !"Tutti".equals(fileTypeFilter.getValue())
