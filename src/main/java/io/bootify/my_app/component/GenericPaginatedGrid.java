@@ -20,7 +20,7 @@ public class GenericPaginatedGrid<T> extends VerticalLayout {
     private final HorizontalLayout filterLayout = new HorizontalLayout();
 
     private int currentPage = 0;
-    private int pageSize = 5;
+    private int pageSize = 10;
     private int totalPages = 0;
     private List<Sort.Order> currentSortOrders = new ArrayList<>();
 
@@ -36,6 +36,7 @@ public class GenericPaginatedGrid<T> extends VerticalLayout {
 
         // Configura grid
         grid.setSizeFull();
+        grid.setMinHeight("450px");
         grid.setMultiSort(true);
         grid.addSortListener(event -> {
             try {
