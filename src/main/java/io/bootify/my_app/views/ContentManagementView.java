@@ -10,6 +10,7 @@ import com.vaadin.flow.component.confirmdialog.ConfirmDialog;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.html.H2;
+import com.vaadin.flow.component.html.Image;
 import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.Icon;
@@ -28,6 +29,7 @@ import com.vaadin.flow.router.Route;
 import io.bootify.my_app.component.GenericPaginatedGrid;
 import io.bootify.my_app.domain.Content;
 import io.bootify.my_app.service.ContentService;
+import io.bootify.my_app.service.PreviewService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 
@@ -40,6 +42,7 @@ import java.util.Map;
 public class ContentManagementView extends VerticalLayout {
 
     private final ContentService contentService;
+    private final PreviewService previewService;
     private final GenericPaginatedGrid<Content> contentGrid = new GenericPaginatedGrid<>();
     private final ComboBox<String> fileTypeFilter = new ComboBox<>("Tipo File");
     private final TextField searchField = new TextField();
@@ -47,8 +50,10 @@ public class ContentManagementView extends VerticalLayout {
     private long cachedTotal = 0;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public ContentManagementView(@Autowired ContentService contentService) {
+    public ContentManagementView(@Autowired ContentService contentService,
+                                  @Autowired PreviewService previewService) {
         this.contentService = contentService;
+        this.previewService = previewService;
 
         setSpacing(true);
         setPadding(true);
@@ -457,12 +462,33 @@ public class ContentManagementView extends VerticalLayout {
     }
     
     private Component buildRowDetail(Content content) {
+        // --- Sezione anteprima ---
+        VerticalLayout previewSection = new VerticalLayout();
+        previewSection.setPadding(false);
+        previewSection.setSpacing(true);
+        previewSection.setWidth("340px");
+        previewSection.setMinWidth("220px");
+
+        Span previewLabel = new Span("Anteprima");
+        previewLabel.getStyle()
+                .set("font-size", "var(--lumo-font-size-xs)")
+                .set("color", "var(--lumo-secondary-text-color)");
+        Image img = new Image("/api/preview/" + content.getId(), "Anteprima");
+        img.setMaxWidth("320px");
+        img.setWidthFull();
+        img.getStyle()
+                .set("border", "1px solid var(--lumo-contrast-20pct)")
+                .set("border-radius", "4px")
+                .set("object-fit", "contain")
+                .set("background", "#f5f5f5");
+        previewSection.add(previewLabel, img);
+
+        // --- Sezione campi ---
         FormLayout form = new FormLayout();
         form.setResponsiveSteps(
                 new FormLayout.ResponsiveStep("0", 1),
-                new FormLayout.ResponsiveStep("600px", 2)
+                new FormLayout.ResponsiveStep("400px", 2)
         );
-        form.getStyle().set("padding", "var(--lumo-space-m)");
 
         form.addFormItem(label(content.getId() != null ? content.getId().toString() : "—"), "ID");
         form.addFormItem(label(content.getFileName()), "Nome File");
@@ -490,7 +516,15 @@ public class ContentManagementView extends VerticalLayout {
         parseCustomMetadata(content.getCustomMetadata())
                 .forEach((key, value) -> form.addFormItem(label(value), key));
 
-        return form;
+        // --- Layout orizzontale: anteprima | campi ---
+        HorizontalLayout row = new HorizontalLayout();
+        row.setWidthFull();
+        row.setAlignItems(FlexComponent.Alignment.START);
+        row.getStyle().set("padding", "var(--lumo-space-m)");
+        row.add(previewSection);
+        row.setFlexGrow(1, form);
+        row.add(form);
+        return row;
     }
 
     private Span label(String value) {

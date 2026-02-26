@@ -27,9 +27,33 @@ public class ContentDataInitializer {
             }
 
             List<Content> contents = Arrays.asList(
+                createContent("test.docx", 0L, "DOCUMENT", "Documenti",
+                    "File Word di test - anteprima da classpath",
+                    "test-docx-hash", "classpath:doc/test.docx",
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "admin",
+                    "test, docx", createMetadata("Nota", "test.docx in src/main/resources/doc/")),
+
+                createContent("test.pdf", 0L, "PDF", "Documenti",
+                    "File PDF di test - anteprima da classpath",
+                    "test-pdf-hash", "classpath:doc/test.pdf",
+                    "application/pdf", "admin",
+                    "test, pdf", createMetadata("Nota", "test.pdf in src/main/resources/doc/")),
+
+                createContent("test.pptx", 0L, "DOCUMENT", "Presentazioni",
+                    "File PowerPoint di test - anteprima da classpath",
+                    "test-pptx-hash", "classpath:doc/test.pptx",
+                    "application/vnd.openxmlformats-officedocument.presentationml.presentation", "admin",
+                    "test, pptx", createMetadata("Nota", "test.pptx in src/main/resources/doc/")),
+
+                createContent("test.xlsx", 0L, "DOCUMENT", "Fogli di calcolo",
+                    "File Excel di test - anteprima da classpath",
+                    "test-xlsx-hash", "classpath:doc/test.xlsx",
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "admin",
+                    "test, xlsx", createMetadata("Nota", "test.xlsx in src/main/resources/doc/")),
+
                 createContent("documento-progetto-2024.pdf", 2458624L, "PDF", "Documenti",
                     "Documento di progetto completo con specifiche tecniche",
-                    "hash123456abc", "/uploads/docs/", "application/pdf", "admin",
+                    "hash123456abc", "https://www.rd.usda.gov/sites/default/files/pdf-sample_0.pdf", "application/pdf", "admin",
                     "progetto, specifiche, 2024",
                     createMetadata("Autore", "Mario Rossi", "Versione", "1.2", "Status", "Approvato")),
                 
@@ -65,7 +89,7 @@ public class ContentDataInitializer {
                 
                 createContent("manuale-utente.pdf", 1234567L, "PDF", "Documenti",
                     "Manuale utente completo del software",
-                    "hash678stu901", "/uploads/manuals/", "application/pdf", "tech_writer",
+                    "hash678stu901", "https://www.rd.usda.gov/sites/default/files/pdf-sample_0.pdf", "application/pdf", "tech_writer",
                     "manuale, software, utente",
                     createMetadata("Versione Software", "3.5", "Pagine", "124", "Lingua", "Italiano")),
                 
@@ -77,7 +101,7 @@ public class ContentDataInitializer {
                 
                 createContent("contratto-fornitore.pdf", 567890L, "PDF", "Documenti",
                     "Contratto di fornitura servizi IT",
-                    "hash901yzA234", "/uploads/contracts/", "application/pdf", "legal",
+                    "hash901yzA234", "https://www.rd.usda.gov/sites/default/files/pdf-sample_0.pdf", "application/pdf", "legal",
                     "contratto, fornitore, legale",
                     createMetadata("Fornitore", "Tech Solutions Srl", "Validità", "2024-2026", "Confidenziale", "Si")),
                 
@@ -119,7 +143,7 @@ public class ContentDataInitializer {
                 
                 createContent("catalogo-prodotti-2024.pdf", 12345678L, "PDF", "Documenti",
                     "Catalogo completo prodotti per l'anno 2024",
-                    "hashIJK678lmn", "/uploads/catalogs/", "application/pdf", "product_manager",
+                    "hashIJK678lmn", "https://www.rd.usda.gov/sites/default/files/pdf-sample_0.pdf", "application/pdf", "product_manager",
                     "catalogo, prodotti, 2024",
                     createMetadata("Prodotti", "340", "Pagine", "180", "Formato", "A4")),
                 
@@ -143,7 +167,7 @@ public class ContentDataInitializer {
                 
                 createContent("guida-policy-sicurezza.pdf", 1567890L, "PDF", "Documenti",
                     "Guida completa policy di sicurezza informatica",
-                    "hashGHI890jkl", "/uploads/security/", "application/pdf", "security_officer",
+                    "hashGHI890jkl", "https://www.rd.usda.gov/sites/default/files/pdf-sample_0.pdf", "application/pdf", "security_officer",
                     "sicurezza, policy, guida",
                     createMetadata("Versione", "3.1", "Approvazione", "CDA 20/11/2024", "Obbligatoria", "Si"))
             );
