@@ -84,8 +84,20 @@ docker build --no-cache -t my-app:latest .
 ### Avvio del container
 
 ```bash
+# Avvio base
 docker run -p 8080:8080 my-app:latest
+
+# Avvio con variabili d'ambiente
+docker run -p 8080:8080 \
+  -e APP_NAME="my app prod" \
+  my-app:latest
 ```
+
+#### Variabili d'ambiente disponibili
+
+| Variabile | Default | Descrizione |
+|-----------|---------|-------------|
+| `APP_NAME` | `my app develop` | Nome dell'applicazione mostrato nella Home |
 
 ### Push su registry
 

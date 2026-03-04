@@ -18,6 +18,9 @@ spring:
         id:
           new_generator_mappings: true
 
+app:
+  name: ${APP_NAME:my app develop}
+
 product:
   upload:
     remote:
