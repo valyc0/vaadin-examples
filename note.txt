@@ -1,3 +1,24 @@
+
+
+#!/bin/bash
+
+# Esegue spring-boot:run senza internet usando il ./m2 locale
+# Prima esegui mvn-fetch.sh per scaricare le dipendenze
+docker run --rm \
+  -p 8080:8080 \
+  --dns 0.0.0.0 \
+  -v "$(pwd)":/app \
+  -w /app \
+  maven:3-eclipse-temurin-17 \
+    tail -f /dev/null
+
+  #mvn spring-boot:run -Dmaven.repo.local=/app/.m2
+
+  # mvn clean package -Dproduction -Dmaven.repo.local=/app/.m2 
+
+
+
+
 uso vaadin24 spring boot3. faccio delle chiamate restclient tipo :public List<String> getUserRoles() {
         try {
             String accessToken = getCurrentAccessToken();
