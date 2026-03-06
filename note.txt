@@ -5,6 +5,7 @@
 # Esegue spring-boot:run senza internet usando il ./m2 locale
 # Prima esegui mvn-fetch.sh per scaricare le dipendenze
 docker run --rm \
+--name maven \
   -p 8080:8080 \
   --dns 0.0.0.0 \
   -v "$(pwd)":/app \
@@ -13,6 +14,10 @@ docker run --rm \
     tail -f /dev/null
 
   #mvn spring-boot:run -Dmaven.repo.local=/app/.m2
+
+  mvn spring-boot:run -Dmaven.repo.local=.m2
+
+  mvn clean package -Dproduction -Dmaven.repo.local=.m2
 
   # mvn clean package -Dproduction -Dmaven.repo.local=/app/.m2 
 
