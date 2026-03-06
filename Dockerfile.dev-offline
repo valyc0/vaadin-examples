@@ -5,6 +5,9 @@ WORKDIR /app
 # Copia il repository Maven locale (dipendenze offline)
 COPY .m2 .m2
 
+# Copia la cache Vaadin (contiene Node.js preinstallato)
+COPY .vaadin-cache .vaadin-cache
+
 # Copia il codice sorgente
 COPY pom.xml ./
 COPY src ./src
@@ -12,4 +15,7 @@ COPY frontend ./frontend
 
 EXPOSE 8080
 
-CMD ["mvn", "spring-boot:run", "-Dmaven.repo.local=.m2"]
+# -o = modalità offline Maven: non tenta connessioni di rete, usa solo il .m2 locale.
+# Senza -o Maven prova a contattare repo.maven.apache.org per aggiornare le metadata
+# anche se i jar sono già presenti, causando lentezza o blocchi senza internet.
+CMD ["mvn", "spring-boot:run", "-Dmaven.repo.local=.m2", "-o"]
