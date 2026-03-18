@@ -123,15 +123,15 @@ public class StructuredTree extends VerticalLayout {
     // -----------------------------------------------------------------------
 
     private static List<TreeResponse> generateDefaultTreeData() {
-        TreeResponse comp1 = new TreeResponse("CT01", "Complesso", "Sicurezza Nazionale");
-        TreeResponse area1 = new TreeResponse("AR01", "Area", "Intelligence");
-        TreeResponse tr1 = new TreeResponse("TR01", "Trattazione", "Analisi Strategica");
+        TreeResponse comp1 = new TreeResponse(10, "Complesso", "Sicurezza Nazionale");
+        TreeResponse area1 = new TreeResponse(11, "Area", "Intelligence");
+        TreeResponse tr1 = new TreeResponse(111, "Trattazione", "Analisi Strategica");
         area1.getChildren().add(tr1);
         comp1.getChildren().add(area1);
 
-        TreeResponse comp2 = new TreeResponse("CT02", "Complesso", "Innovazione Tecnologica");
-        TreeResponse area2 = new TreeResponse("AR02", "Area", "Cybersecurity");
-        TreeResponse tr2 = new TreeResponse("TR02", "Trattazione", "Minacce Informatiche");
+        TreeResponse comp2 = new TreeResponse(20, "Complesso", "Innovazione Tecnologica");
+        TreeResponse area2 = new TreeResponse(21, "Area", "Cybersecurity");
+        TreeResponse tr2 = new TreeResponse(211, "Trattazione", "Minacce Informatiche");
         area2.getChildren().add(tr2);
         comp2.getChildren().add(area2);
 

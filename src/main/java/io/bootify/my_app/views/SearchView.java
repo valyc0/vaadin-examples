@@ -387,7 +387,7 @@ public class SearchView extends VerticalLayout {
         
         // Filtro strutturato (tree)
         if (structuredTree.getSelectedItem() != null) {
-            filter.setStrutturaCode(structuredTree.getSelectedItem().getCode());
+            filter.setStrutturaCode(String.valueOf(structuredTree.getSelectedItem().getCode()));
             filter.setStrutturaType(structuredTree.getSelectedItem().getType());
             filter.setStrutturaDescrizione(structuredTree.getSelectedItem().getDescrizione());
         }

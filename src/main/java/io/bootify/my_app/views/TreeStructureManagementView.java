@@ -226,14 +226,29 @@ public class TreeStructureManagementView extends VerticalLayout {
         return false;
     }
 
+    private int findMaxCode(List<TreeResponse> items) {
+        int max = 0;
+        for (TreeResponse item : items) {
+            if (item.getCode() != null && item.getCode() > max) {
+                max = item.getCode();
+            }
+            int childMax = findMaxCode(item.getChildren());
+            if (childMax > max) max = childMax;
+        }
+        return max;
+    }
+
     private void openAddDialog() {
         Dialog dialog = new Dialog();
         dialog.setHeaderTitle("Aggiungi Nuovo Elemento");
 
         FormLayout formLayout = new FormLayout();
 
+        int nextCode = findMaxCode(rootItems) + 1;
+
         TextField codeField = new TextField("Codice");
-        codeField.setPlaceholder("es: CT01, AR01, TR01");
+        codeField.setValue(String.valueOf(nextCode));
+        codeField.setHelperText("Calcolato automaticamente, puoi modificarlo");
         codeField.setRequired(true);
         codeField.addValueChangeListener(e -> codeField.setInvalid(false));
 
@@ -256,7 +271,16 @@ public class TreeStructureManagementView extends VerticalLayout {
             }
 
             // Controllo codice duplicato
-            String newCode = codeField.getValue();
+            Integer newCode;
+            try {
+                newCode = Integer.parseInt(codeField.getValue().trim());
+            } catch (NumberFormatException ex) {
+                Notification.show("Il codice deve essere un numero intero.", 3000, Notification.Position.MIDDLE)
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                codeField.setInvalid(true);
+                codeField.setErrorMessage("Codice non valido");
+                return;
+            }
             if (codeExists(newCode)) {
                 Notification.show("Il codice '" + newCode + "' esiste già. Usa un codice univoco.", 4000, Notification.Position.MIDDLE)
                         .addThemeVariants(NotificationVariant.LUMO_ERROR);
@@ -266,7 +290,7 @@ public class TreeStructureManagementView extends VerticalLayout {
             }
 
             TreeResponse newItem = new TreeResponse(
-                    codeField.getValue(),
+                    newCode,
                     typeCombo.getValue(),
                     descriptionField.getValue()
             );
@@ -300,11 +324,11 @@ public class TreeStructureManagementView extends VerticalLayout {
         Notification.show("Elemento eliminato", 2000, Notification.Position.BOTTOM_CENTER);
     }
 
-    private boolean codeExists(String code) {
+    private boolean codeExists(Integer code) {
         return codeExistsInList(rootItems, code);
     }
 
-    private boolean codeExistsInList(List<TreeResponse> items, String code) {
+    private boolean codeExistsInList(List<TreeResponse> items, Integer code) {
         for (TreeResponse item : items) {
             if (code.equals(item.getCode())) {
                 return true;
@@ -387,30 +411,30 @@ public class TreeStructureManagementView extends VerticalLayout {
 
     private void initializeDefaultStructure() {
         // Complesso 1: Sicurezza Nazionale
-        TreeResponse comp1 = new TreeResponse("CT01", "Complesso", "Sicurezza Nazionale");
-        TreeResponse area1 = new TreeResponse("AR01", "Area", "Intelligence");
-        TreeResponse tr1 = new TreeResponse("TR01", "Trattazione", "Analisi Strategica");
-        TreeResponse tr2 = new TreeResponse("TR02", "Trattazione", "Controspionaggio");
+        TreeResponse comp1 = new TreeResponse(10, "Complesso", "Sicurezza Nazionale");
+        TreeResponse area1 = new TreeResponse(11, "Area", "Intelligence");
+        TreeResponse tr1 = new TreeResponse(111, "Trattazione", "Analisi Strategica");
+        TreeResponse tr2 = new TreeResponse(112, "Trattazione", "Controspionaggio");
         area1.getChildren().add(tr1);
         area1.getChildren().add(tr2);
         
-        TreeResponse area2 = new TreeResponse("AR02", "Area", "Difesa");
-        TreeResponse tr3 = new TreeResponse("TR03", "Trattazione", "Operazioni Militari");
+        TreeResponse area2 = new TreeResponse(12, "Area", "Difesa");
+        TreeResponse tr3 = new TreeResponse(121, "Trattazione", "Operazioni Militari");
         area2.getChildren().add(tr3);
         
         comp1.getChildren().add(area1);
         comp1.getChildren().add(area2);
 
         // Complesso 2: Innovazione Tecnologica
-        TreeResponse comp2 = new TreeResponse("CT02", "Complesso", "Innovazione Tecnologica");
-        TreeResponse area3 = new TreeResponse("AR03", "Area", "Cybersecurity");
-        TreeResponse tr4 = new TreeResponse("TR04", "Trattazione", "Minacce Informatiche");
-        TreeResponse tr5 = new TreeResponse("TR05", "Trattazione", "Sicurezza delle Reti");
+        TreeResponse comp2 = new TreeResponse(20, "Complesso", "Innovazione Tecnologica");
+        TreeResponse area3 = new TreeResponse(21, "Area", "Cybersecurity");
+        TreeResponse tr4 = new TreeResponse(211, "Trattazione", "Minacce Informatiche");
+        TreeResponse tr5 = new TreeResponse(212, "Trattazione", "Sicurezza delle Reti");
         area3.getChildren().add(tr4);
         area3.getChildren().add(tr5);
         
-        TreeResponse area4 = new TreeResponse("AR04", "Area", "Intelligenza Artificiale");
-        TreeResponse tr6 = new TreeResponse("TR06", "Trattazione", "Machine Learning");
+        TreeResponse area4 = new TreeResponse(22, "Area", "Intelligenza Artificiale");
+        TreeResponse tr6 = new TreeResponse(221, "Trattazione", "Machine Learning");
         area4.getChildren().add(tr6);
         
         comp2.getChildren().add(area3);
