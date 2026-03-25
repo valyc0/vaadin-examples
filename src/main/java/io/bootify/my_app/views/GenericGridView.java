@@ -5,6 +5,7 @@ import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.confirmdialog.ConfirmDialog;
+import com.vaadin.flow.component.details.Details;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Span;
@@ -25,7 +26,9 @@ import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import io.bootify.my_app.component.GenericFormDialog;
 import io.bootify.my_app.component.GenericPaginatedGrid;
+import io.bootify.my_app.component.StructuredTree;
 import io.bootify.my_app.domain.Product;
+import io.bootify.my_app.model.TreeResponse;
 import io.bootify.my_app.service.ProductService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
@@ -41,6 +44,7 @@ public class GenericGridView extends VerticalLayout {
     private final ComboBox<String> categoryFilter = new ComboBox<>("Categoria");
     private final TextField searchField = new TextField();
     private final Span totalLabel = new Span();
+    private final StructuredTree structuredTree = new StructuredTree();
     private long cachedTotal = 0;
 
     public GenericGridView(@Autowired ProductService productService) {
@@ -114,8 +118,27 @@ public class GenericGridView extends VerticalLayout {
         searchField.addValueChangeListener(e -> productGrid.refresh());
         categoryFilter.addValueChangeListener(e -> productGrid.refresh());
 
+        // Filtro Strutturato
+        Details strutturaDet = new Details();
+        strutturaDet.setSummaryText("Filtro Strutturato");
+        strutturaDet.setContent(structuredTree);
+        strutturaDet.setOpened(false);
+        strutturaDet.setWidthFull();
+        structuredTree.setSelectionListener(item -> productGrid.refresh());
+
+        // Pulsante reset globale per tutti i filtri
+        Button resetAllButton = new Button("Pulisci Filtri", new Icon(VaadinIcon.ERASER));
+        resetAllButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+        resetAllButton.addClickListener(e -> {
+            searchField.clear();
+            categoryFilter.setValue("Tutti");
+            structuredTree.clearSelection();
+            productGrid.refresh();
+            Notification.show("Filtri azzerati", 2000, Notification.Position.BOTTOM_CENTER);
+        });
+
         // Layout finale
-        add(title, totalLabel, toolbar, filterLayout, productGrid);
+        add(title, totalLabel, toolbar, filterLayout, strutturaDet, resetAllButton, productGrid);
         expand(productGrid);
     }
     
@@ -142,7 +165,25 @@ public class GenericGridView extends VerticalLayout {
                 .setHeader("Prezzo").setSortable(true).setKey("price");
         productGrid.getGrid().addColumn(Product::getQuantity).setHeader("Qtà").setSortable(true).setKey("quantity");
         productGrid.getGrid().addColumn(Product::getDescription).setHeader("Descrizione").setKey("description");
-        
+
+        // Colonna Struttura: mostra il nodo selezionato nel Filtro Strutturato
+        productGrid.getGrid().addColumn(new ComponentRenderer<>(product -> {
+            TreeResponse selected = structuredTree.getSelectedItem();
+            if (selected != null) {
+                Span badge = new Span(selected.getType() + " › " + selected.getDescrizione());
+                badge.getElement().getThemeList().add("badge");
+                badge.getStyle()
+                        .set("background-color", "var(--lumo-primary-color-10pct)")
+                        .set("color", "var(--lumo-primary-text-color)")
+                        .set("font-size", "var(--lumo-font-size-xs)")
+                        .set("white-space", "nowrap");
+                return badge;
+            }
+            Span empty = new Span("—");
+            empty.getStyle().set("color", "var(--lumo-secondary-text-color)");
+            return empty;
+        })).setHeader("Struttura").setKey("struttura").setWidth("220px").setFlexGrow(0);
+
         // Colonna azioni
         productGrid.getGrid().addColumn(new ComponentRenderer<>(this::createActionsLayout))
                 .setHeader("Azioni")

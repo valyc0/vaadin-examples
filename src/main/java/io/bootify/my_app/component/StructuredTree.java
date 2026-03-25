@@ -8,6 +8,7 @@ import com.vaadin.flow.component.treegrid.TreeGrid;
 import io.bootify.my_app.model.TreeResponse;
 
 import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * Componente riutilizzabile che mostra un TreeGrid di TreeResponse con selezione singola via checkbox.
@@ -16,6 +17,7 @@ public class StructuredTree extends VerticalLayout {
 
     private final TreeGrid<TreeResponse> tree = new TreeGrid<>();
     private TreeResponse selectedItem;
+    private Consumer<TreeResponse> selectionListener;
 
     /**
      * Crea il componente con i dati forniti e pre-seleziona l'elemento con il codice indicato.
@@ -50,6 +52,12 @@ public class StructuredTree extends VerticalLayout {
     public void clearSelection() {
         selectedItem = null;
         tree.getDataCommunicator().reset();
+        if (selectionListener != null) selectionListener.accept(null);
+    }
+
+    /** Registra un listener chiamato ogni volta che la selezione cambia (null = deselezionato). */
+    public void setSelectionListener(Consumer<TreeResponse> listener) {
+        this.selectionListener = listener;
     }
 
     // -----------------------------------------------------------------------
@@ -65,6 +73,7 @@ public class StructuredTree extends VerticalLayout {
                 if (event.getValue()) {
                     selectedItem = item;
                     tree.getDataCommunicator().reset();
+                    if (selectionListener != null) selectionListener.accept(selectedItem);
                     Notification.show(
                             "Selezionato: " + item.getDescrizione(),
                             2000,
@@ -74,6 +83,7 @@ public class StructuredTree extends VerticalLayout {
                     if (item.equals(selectedItem)) {
                         selectedItem = null;
                         tree.getDataCommunicator().reset();
+                        if (selectionListener != null) selectionListener.accept(null);
                     }
                 }
             });
