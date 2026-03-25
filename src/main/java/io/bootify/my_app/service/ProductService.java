@@ -59,6 +59,11 @@ public class ProductService {
         productRepository.deleteById(id);
     }
 
+    @Transactional
+    public void deleteByIds(List<Long> ids) {
+        productRepository.deleteAllByIdInBatch(ids);
+    }
+
     public Product findById(Long id) {
         return productRepository.findById(id).orElse(null);
     }

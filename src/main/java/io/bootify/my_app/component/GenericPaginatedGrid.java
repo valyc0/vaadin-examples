@@ -11,7 +11,11 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.function.Consumer;
 
 public class GenericPaginatedGrid<T> extends VerticalLayout {
 
@@ -28,6 +32,12 @@ public class GenericPaginatedGrid<T> extends VerticalLayout {
     private TriFunction<PageRequest, List<Sort.Order>, String, org.springframework.data.domain.Page<T>> dataProvider;
 
     private String filterText = "";
+
+    // Multi-select support (opt-in via enableMultiSelect())
+    private final Set<T> crossPageSelection = new LinkedHashSet<>();
+    private Consumer<Set<T>> selectionChangeListener;
+    private boolean multiSelectEnabled = false;
+    private boolean restoringSelection = false;
 
     public GenericPaginatedGrid() {
         setWidthFull();
@@ -77,6 +87,42 @@ public class GenericPaginatedGrid<T> extends VerticalLayout {
         expand(grid);
     }
 
+    /**
+     * Enables multi-select mode with cross-page selection tracking.
+     * Call once after construction to opt-in; other views remain unaffected.
+     */
+    public void enableMultiSelect() {
+        multiSelectEnabled = true;
+        grid.setSelectionMode(Grid.SelectionMode.MULTI);
+        grid.asMultiSelect().addSelectionListener(event -> {
+            if (restoringSelection) return;
+            crossPageSelection.addAll(event.getAddedSelection());
+            crossPageSelection.removeAll(event.getRemovedSelection());
+            if (selectionChangeListener != null) {
+                selectionChangeListener.accept(Collections.unmodifiableSet(crossPageSelection));
+            }
+        });
+    }
+
+    /** Returns the cross-page accumulated selection (unmodifiable view). */
+    public Set<T> getSelectedItems() {
+        return Collections.unmodifiableSet(crossPageSelection);
+    }
+
+    /** Clears all selections across all pages and fires the listener. */
+    public void clearSelection() {
+        crossPageSelection.clear();
+        grid.deselectAll();
+        if (selectionChangeListener != null) {
+            selectionChangeListener.accept(Collections.unmodifiableSet(crossPageSelection));
+        }
+    }
+
+    /** Registers a listener called whenever the selection changes. */
+    public void setSelectionChangeListener(Consumer<Set<T>> listener) {
+        this.selectionChangeListener = listener;
+    }
+
     public void setDataProvider(TriFunction<PageRequest, List<Sort.Order>, String, org.springframework.data.domain.Page<T>> provider) {
         this.dataProvider = provider;
         loadData();
@@ -107,7 +153,16 @@ public class GenericPaginatedGrid<T> extends VerticalLayout {
 
         org.springframework.data.domain.Page<T> resultPage = dataProvider.apply(pageRequest, currentSortOrders, filterText);
 
+        if (multiSelectEnabled) restoringSelection = true;
         grid.setItems(resultPage.getContent());
+        if (multiSelectEnabled && !crossPageSelection.isEmpty()) {
+            for (T item : resultPage.getContent()) {
+                if (crossPageSelection.contains(item)) {
+                    grid.asMultiSelect().select(item);
+                }
+            }
+        }
+        if (multiSelectEnabled) restoringSelection = false;
         totalPages = resultPage.getTotalPages();
         updatePaginationControls();
     }

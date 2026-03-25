@@ -33,6 +33,9 @@ import io.bootify.my_app.service.ProductService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 
+import java.util.List;
+import java.util.Set;
+
 import java.math.BigDecimal;
 
 @Route(value = "generic-grid", layout = MainLayout.class)
@@ -46,6 +49,10 @@ public class GenericGridView extends VerticalLayout {
     private final Span totalLabel = new Span();
     private final StructuredTree structuredTree = new StructuredTree();
     private long cachedTotal = 0;
+
+    // Bulk action bar (multi-select)
+    private final Span selectionLabel = new Span();
+    private final HorizontalLayout bulkActionBar = new HorizontalLayout();
 
     public GenericGridView(@Autowired ProductService productService) {
         this.productService = productService;
@@ -114,9 +121,9 @@ public class GenericGridView extends VerticalLayout {
         // Imposta ordinamento di default lato server per ID ascendente
         productGrid.setDefaultSort("id", org.springframework.data.domain.Sort.Direction.ASC);
 
-        // Ricarica grid quando cambiano filtri
-        searchField.addValueChangeListener(e -> productGrid.refresh());
-        categoryFilter.addValueChangeListener(e -> productGrid.refresh());
+        // Ricarica grid quando cambiano filtri (azzera selezione al cambio filtro)
+        searchField.addValueChangeListener(e -> { productGrid.clearSelection(); productGrid.refresh(); });
+        categoryFilter.addValueChangeListener(e -> { productGrid.clearSelection(); productGrid.refresh(); });
 
         // Filtro Strutturato
         Details strutturaDet = new Details();
@@ -133,12 +140,44 @@ public class GenericGridView extends VerticalLayout {
             searchField.clear();
             categoryFilter.setValue("Tutti");
             structuredTree.clearSelection();
+            productGrid.clearSelection();
             productGrid.refresh();
             Notification.show("Filtri azzerati", 2000, Notification.Position.BOTTOM_CENTER);
         });
 
+        // Abilita selezione multipla (opt-in — altre view che usano GenericPaginatedGrid rimangono invariate)
+        productGrid.enableMultiSelect();
+        productGrid.setSelectionChangeListener(selected -> {
+            int count = selected.size();
+            selectionLabel.setText(count + (count == 1 ? " elemento selezionato" : " elementi selezionati"));
+            bulkActionBar.setVisible(count > 0);
+        });
+
+        // Bulk action bar — visibile solo quando c'è almeno un elemento selezionato
+        Button deleteSelectedBtn = new Button("Elimina selezionati", new Icon(VaadinIcon.TRASH));
+        deleteSelectedBtn.addThemeVariants(ButtonVariant.LUMO_ERROR);
+        deleteSelectedBtn.addClickListener(e -> confirmDeleteSelected());
+
+        Button clearSelectionBtn = new Button("Deseleziona tutti", new Icon(VaadinIcon.CLOSE_SMALL));
+        clearSelectionBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+        clearSelectionBtn.addClickListener(e -> productGrid.clearSelection());
+
+        selectionLabel.getStyle()
+                .set("font-weight", "600")
+                .set("color", "var(--lumo-error-text-color)");
+
+        bulkActionBar.setAlignItems(Alignment.CENTER);
+        bulkActionBar.setSpacing(true);
+        bulkActionBar.setWidthFull();
+        bulkActionBar.getStyle()
+                .set("padding", "8px 12px")
+                .set("background-color", "var(--lumo-error-color-10pct)")
+                .set("border-radius", "var(--lumo-border-radius-m)");
+        bulkActionBar.add(selectionLabel, deleteSelectedBtn, clearSelectionBtn);
+        bulkActionBar.setVisible(false);
+
         // Layout finale
-        add(title, totalLabel, toolbar, filterLayout, strutturaDet, resetAllButton, productGrid);
+        add(title, totalLabel, toolbar, filterLayout, strutturaDet, resetAllButton, bulkActionBar, productGrid);
         expand(productGrid);
     }
     
@@ -329,9 +368,40 @@ public class GenericGridView extends VerticalLayout {
             Notification.show("Prodotto eliminato con successo", 3000, Notification.Position.BOTTOM_START)
                     .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
         } catch (Exception e) {
-            Notification.show("Errore durante l'eliminazione: " + e.getMessage(), 
+            Notification.show("Errore durante l'eliminazione: " + e.getMessage(),
                     3000, Notification.Position.MIDDLE)
                     .addThemeVariants(NotificationVariant.LUMO_ERROR);
         }
+    }
+
+    private void confirmDeleteSelected() {
+        Set<Product> selected = productGrid.getSelectedItems();
+        if (selected.isEmpty()) return;
+        int count = selected.size();
+
+        ConfirmDialog dialog = new ConfirmDialog();
+        dialog.setHeader("Conferma eliminazione massiva");
+        dialog.setText("Stai per eliminare " + count + (count == 1 ? " prodotto" : " prodotti") +
+                ". L'operazione è irreversibile. Continuare?");
+        dialog.setCancelable(true);
+        dialog.setCancelText("Annulla");
+        dialog.setConfirmText("Elimina " + count);
+        dialog.setConfirmButtonTheme("error primary");
+        dialog.addConfirmListener(e -> {
+            try {
+                List<Long> ids = selected.stream().map(Product::getId).toList();
+                productService.deleteByIds(ids);
+                productGrid.clearSelection();
+                productGrid.refresh();
+                Notification.show(count + (count == 1 ? " prodotto eliminato" : " prodotti eliminati"),
+                        3000, Notification.Position.BOTTOM_START)
+                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            } catch (Exception ex) {
+                Notification.show("Errore durante l'eliminazione: " + ex.getMessage(),
+                        3000, Notification.Position.MIDDLE)
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            }
+        });
+        dialog.open();
     }
 }
