@@ -5,6 +5,7 @@ import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.select.Select;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.data.provider.SortDirection;
 import org.springframework.data.domain.PageRequest;
@@ -22,6 +23,7 @@ public class GenericPaginatedGrid<T> extends VerticalLayout {
     private final Grid<T> grid = new Grid<>();
     private final HorizontalLayout paginationLayout = new HorizontalLayout();
     private final HorizontalLayout filterLayout = new HorizontalLayout();
+    private final Select<Integer> pageSizeSelect = new Select<>();
 
     private int currentPage = 0;
     private int pageSize = 10;
@@ -82,7 +84,19 @@ public class GenericPaginatedGrid<T> extends VerticalLayout {
         });
         filterLayout.add(searchField);
 
+        pageSizeSelect.setItems(10, 20, 100);
+        pageSizeSelect.setValue(pageSize);
+        pageSizeSelect.setLabel("Righe per pagina");
+        pageSizeSelect.addValueChangeListener(e -> {
+            if (e.getValue() != null) {
+                pageSize = e.getValue();
+                currentPage = 0;
+                loadData();
+            }
+        });
+
         paginationLayout.setSpacing(true);
+        paginationLayout.setAlignItems(Alignment.BASELINE);
         add(filterLayout, grid, paginationLayout);
         expand(grid);
     }
@@ -169,6 +183,7 @@ public class GenericPaginatedGrid<T> extends VerticalLayout {
 
     private void updatePaginationControls() {
         paginationLayout.removeAll();
+        paginationLayout.add(pageSizeSelect);
         if (totalPages <= 1) return;
 
         Button prev = new Button("‹ Prev", e -> {
