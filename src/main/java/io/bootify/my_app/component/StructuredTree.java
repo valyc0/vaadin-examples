@@ -98,9 +98,11 @@ public class StructuredTree extends VerticalLayout {
         tree.setItems(treeData, TreeResponse::getChildren);
         tree.setSelectionMode(Grid.SelectionMode.NONE);
         tree.setWidth("100%");
-        tree.getStyle().set("min-width", "800px");
         tree.setHeight("350px");
-        tree.getStyle().set("font-size", "var(--lumo-font-size-m)");
+        tree.getStyle()
+            .set("font-size", "var(--lumo-font-size-m)")
+            .set("border-radius", "12px")
+            .set("overflow", "hidden");
 
         // Pre-selezione con espansione automatica dei nodi parent
         if (preSelectCode != null) {

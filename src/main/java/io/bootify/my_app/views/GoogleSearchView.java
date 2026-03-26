@@ -222,7 +222,8 @@ public class GoogleSearchView extends Div {
         filtersRow.setDefaultVerticalComponentAlignment(FlexComponent.Alignment.END);
         filtersRow.getStyle()
                 .set("padding", "8px 0")
-                .set("flex-wrap", "wrap");
+            .set("flex-wrap", "wrap")
+            .set("flex", "1");
 
         // --- File Type Filter (più compatto) - Multiselezione ---
         fileTypeFilter = new MultiSelectComboBox<>("Tipo");
@@ -311,14 +312,64 @@ public class GoogleSearchView extends Div {
 
         filtersRow.add(fileTypeFilter, dateRangeFilter, customDateContainer, resetFiltersBtn);
 
-        // Struttura ad albero
-        structuredTree = new StructuredTree();
-        Details treeDetails = new Details("Filtro Strutturato", structuredTree);
-        treeDetails.setOpened(false);
+        // Pannello sinistro: filtri standard
+        VerticalLayout leftPanel = new VerticalLayout(filtersRow);
+        leftPanel.setPadding(false);
+        leftPanel.setSpacing(false);
+        leftPanel.setWidthFull();
+        leftPanel.getStyle()
+            .set("flex", "1 1 520px")
+            .set("min-width", "420px");
 
-        VerticalLayout filtersContent = new VerticalLayout(filtersRow, treeDetails);
+        // Struttura ad albero — card laterale dedicata
+        structuredTree = new StructuredTree();
+        structuredTree.getStyle()
+            .set("width", "100%")
+            .set("background", "white")
+            .set("border-radius", "12px")
+            .set("padding", "0")
+            .set("box-sizing", "border-box");
+
+        H4 treeTitle = new H4("Filtro Strutturato");
+        treeTitle.getStyle()
+            .set("margin", "0")
+            .set("font-size", "16px")
+            .set("color", "#16325c");
+
+        Span treeDescription = new Span("Seleziona rapidamente area, complesso o trattazione senza comprimere l'albero.");
+        treeDescription.getStyle()
+            .set("font-size", "12px")
+            .set("line-height", "1.4")
+            .set("color", "#5f6b7a");
+
+        Div treeHeader = new Div(treeTitle, treeDescription);
+        treeHeader.getStyle()
+            .set("display", "flex")
+            .set("flex-direction", "column")
+            .set("gap", "4px");
+
+        VerticalLayout treeCard = new VerticalLayout(treeHeader, structuredTree);
+        treeCard.setPadding(false);
+        treeCard.setSpacing(true);
+        treeCard.getStyle()
+            .set("flex", "0 1 380px")
+            .set("min-width", "340px")
+            .set("max-width", "420px")
+            .set("padding", "16px")
+            .set("border-radius", "18px")
+            .set("background", "linear-gradient(180deg, #f7faff 0%, #eef4ff 100%)")
+            .set("border", "1px solid #d7e3f7")
+            .set("box-shadow", "0 10px 24px rgba(15, 23, 42, 0.08)");
+
+        // Layout contenuto: sinistra filtri, destra albero strutturato
+        HorizontalLayout filtersContent = new HorizontalLayout(leftPanel, treeCard);
         filtersContent.setPadding(false);
         filtersContent.setSpacing(true);
+        filtersContent.setWidthFull();
+        filtersContent.setDefaultVerticalComponentAlignment(FlexComponent.Alignment.START);
+        filtersContent.getStyle()
+            .set("flex-wrap", "wrap")
+            .set("gap", "20px");
 
         // Crea Details collassabile
         Details details = new Details("Filtri di ricerca", filtersContent);
@@ -326,8 +377,8 @@ public class GoogleSearchView extends Div {
         details.getStyle()
                 .set("background-color", "#f8f9fa")
                 .set("border-bottom", "1px solid var(--lumo-contrast-10pct)")
-                .set("padding", "4px 16px")
-                .set("max-width", "700px")
+            .set("padding", "8px 14px")
+                .set("max-width", "960px")
                 .set("margin", "0 auto")
                 .set("width", "100%")
                 .set("font-size", "13px");
