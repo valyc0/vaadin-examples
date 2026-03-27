@@ -18,6 +18,7 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
+import com.flowingcode.vaadin.addons.fontawesome.FontAwesome;
 import io.bootify.my_app.component.StructuredTree;
 
 import java.time.LocalDate;
@@ -724,15 +725,28 @@ public class GoogleSearchView extends Div {
         card.add(urlRow);
 
         // Title
-        Anchor title = new Anchor(result.url, result.title);
+        Anchor title = new Anchor();
+        title.setHref(result.url);
+        title.setTarget("_blank");
+        title.getElement().setAttribute("rel", "noopener noreferrer");
+
+        Span titleText = new Span(result.title);
+        Icon externalLinkIcon = FontAwesome.Solid.ARROW_UP_RIGHT_FROM_SQUARE.create();
+        externalLinkIcon.getStyle()
+            .set("font-size", "14px")
+            .set("color", "inherit")
+            .set("opacity", "0.8");
+
+        title.add(titleText, externalLinkIcon);
         title.getStyle()
                 .set("font-size", "20px")
                 .set("color", "#1a0dab")
                 .set("text-decoration", "none")
                 .set("margin", "0 0 8px 0")
-                .set("display", "block")
-                .set("font-weight", "400");
-        title.getElement().setAttribute("target", "_blank");
+            .set("display", "inline-flex")
+            .set("align-items", "center")
+            .set("gap", "8px")
+            .set("font-weight", "400");
 
         // Description
         Paragraph description = new Paragraph(result.description);
