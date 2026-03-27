@@ -1003,12 +1003,12 @@ public class GoogleSearchView extends Div {
 
     private Icon getFileIcon(String type) {
         return switch (type.toUpperCase()) {
-            case "PDF" -> new Icon(VaadinIcon.FILE_TEXT);
-            case "DOCX", "DOC" -> new Icon(VaadinIcon.FILE_TEXT_O);
-            case "MP4", "AVI", "MOV" -> new Icon(VaadinIcon.FILE_MOVIE);
-            case "MP3", "WAV" -> new Icon(VaadinIcon.FILE_SOUND);
-            case "ZIP", "RAR" -> new Icon(VaadinIcon.FILE_ZIP);
-            default -> new Icon(VaadinIcon.FILE);
+            case "PDF" -> FontAwesome.Solid.FILE_PDF.create();
+            case "DOCX", "DOC" -> FontAwesome.Solid.FILE_WORD.create();
+            case "MP4", "AVI", "MOV" -> FontAwesome.Solid.FILE_VIDEO.create();
+            case "MP3", "WAV" -> FontAwesome.Solid.FILE_AUDIO.create();
+            case "ZIP", "RAR" -> FontAwesome.Solid.FILE_ZIPPER.create();
+            default -> FontAwesome.Solid.FILE_LINES.create();
         };
     }
 
