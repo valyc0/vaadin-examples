@@ -36,16 +36,19 @@ import java.util.stream.Collectors;
 public class GoogleSearchView extends Div {
 
     private final VerticalLayout searchResultsContainer;
+    private final Div heroSection;
+    private final HorizontalLayout compactHeader;
     private final Div chatbotWindow;
     private final VerticalLayout chatContainer;
     private final TextField messageInput;
     private final Button chatbotFab;
+    private TextField heroSearchField;
+    private TextField headerSearchField;
     private boolean isChatOpen = false;
     private int currentPage = 1;
     private String currentQuery = "java programming";
     private int resultsPerPage = 6;
     private static final String AI_RESPONSE = "Ciao! Sono un assistente virtuale. Posso aiutarti con qualsiasi domanda! 🤖";
-    private boolean hasSearched = false;
 
     // Filter state
     private Set<String> selectedFileTypes = new HashSet<>();
@@ -75,12 +78,18 @@ public class GoogleSearchView extends Div {
         mainContent.setSizeFull();
         mainContent.setPadding(false);
         mainContent.setSpacing(false);
+        mainContent.addClassName("google-search-shell");
 
-        // Google-style header
-        mainContent.add(createHeader());
+        compactHeader = createCompactHeader();
+        compactHeader.setVisible(false);
+        mainContent.add(compactHeader);
+
+        heroSection = createHeroSection();
+        mainContent.add(heroSection);
 
         // Filters bar (hidden initially)
         filtersDetails = createFiltersBar();
+        filtersDetails.addClassName("google-search-filters");
         filtersDetails.setVisible(false);
         mainContent.add(filtersDetails);
 
@@ -88,6 +97,7 @@ public class GoogleSearchView extends Div {
         activeFiltersBar = new HorizontalLayout();
         activeFiltersBar.setSpacing(true);
         activeFiltersBar.setPadding(false);
+        activeFiltersBar.addClassName("google-search-active-filters");
         activeFiltersBar.getStyle()
                 .set("max-width", "700px")
                 .set("margin", "0 auto")
@@ -101,6 +111,8 @@ public class GoogleSearchView extends Div {
         searchResultsContainer = new VerticalLayout();
         searchResultsContainer.setPadding(true);
         searchResultsContainer.setSpacing(true);
+        searchResultsContainer.addClassName("google-search-results");
+        searchResultsContainer.setVisible(false);
         searchResultsContainer.getStyle()
                 .set("max-width", "700px")
                 .set("margin", "0 auto")
@@ -153,66 +165,168 @@ public class GoogleSearchView extends Div {
         addBotMessage("Ciao! Come posso aiutarti oggi?");
     }
 
-    private Component createHeader() {
+    private HorizontalLayout createCompactHeader() {
         HorizontalLayout header = new HorizontalLayout();
         header.setWidthFull();
-        header.setPadding(true);
+        header.setPadding(false);
         header.setSpacing(true);
-        header.getStyle()
-                .set("background-color", "white")
-                .set("border-bottom", "1px solid var(--lumo-contrast-10pct)")
-                .set("padding", "20px 200px");
+        header.addClassName("google-search-header");
+        header.setDefaultVerticalComponentAlignment(FlexComponent.Alignment.CENTER);
 
-        // Google-style logo
-        H2 logo = new H2();
-        logo.getStyle()
-                .set("margin", "0")
-                .set("color", "#4285f4")
-                .set("font-weight", "bold")
-                .set("font-size", "28px");
-
-        // Search bar
-        TextField searchField = new TextField();
-        searchField.setPlaceholder("Cerca...");
-        searchField.setWidthFull();
-        searchField.getStyle()
-                .set("max-width", "600px")
-                .set("border-radius", "24px");
+        headerSearchField = new TextField();
+        headerSearchField.setPlaceholder("Cerca nei documenti scolastici");
+        headerSearchField.setPrefixComponent(new Icon(VaadinIcon.SEARCH));
+        headerSearchField.setWidthFull();
+        headerSearchField.addClassName("google-search-input");
+        headerSearchField.addKeyPressListener(event -> {
+            if (event.getKey().getKeys().contains("Enter")) {
+                executeSearch(headerSearchField.getValue());
+            }
+        });
 
         Button searchButton = new Button(new Icon(VaadinIcon.SEARCH));
-        searchButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        searchButton.addClassName("google-search-submit");
+        searchButton.addClickListener(e -> executeSearch(headerSearchField.getValue()));
 
-        searchButton.addClickListener(e -> {
-            String query = searchField.getValue();
-            if (!query.isEmpty()) {
-                hasSearched = true;
-                filtersDetails.setVisible(true);
-                searchResultsContainer.removeAll();
-                addSimulatedResults(query, 1);
-            }
-        });
-
-        searchField.addKeyPressListener(event -> {
-            if (event.getKey().getKeys().contains("Enter")) {
-                String query = searchField.getValue();
-                if (!query.isEmpty()) {
-                    hasSearched = true;
-                    filtersDetails.setVisible(true);
-                    searchResultsContainer.removeAll();
-                    addSimulatedResults(query, 1);
-                }
-            }
-        });
-
-        HorizontalLayout searchBar = new HorizontalLayout(searchField, searchButton);
+        HorizontalLayout searchBar = new HorizontalLayout(headerSearchField, searchButton);
         searchBar.setDefaultVerticalComponentAlignment(FlexComponent.Alignment.CENTER);
         searchBar.setWidthFull();
-        searchBar.getStyle().set("max-width", "700px");
+        searchBar.expand(headerSearchField);
+        searchBar.addClassName("google-search-bar");
 
-        header.add(logo, searchBar);
-        header.expand(searchBar);
+        Span helper = new Span("Trova verbali, circolari, modulistica e materiali didattici in un'unica ricerca.");
+        helper.addClassName("google-search-header-helper");
+
+        VerticalLayout searchColumn = new VerticalLayout(searchBar, helper);
+        searchColumn.setPadding(false);
+        searchColumn.setSpacing(false);
+        searchColumn.addClassName("google-search-header-column");
+
+        header.add(createBrand(true), searchColumn);
+        header.expand(searchColumn);
 
         return header;
+    }
+
+    private Div createHeroSection() {
+        Div hero = new Div();
+        hero.addClassName("google-search-hero");
+
+        VerticalLayout content = new VerticalLayout();
+        content.setPadding(false);
+        content.setSpacing(false);
+        content.setDefaultHorizontalComponentAlignment(FlexComponent.Alignment.CENTER);
+        content.addClassName("google-search-hero-content");
+
+        Span pretitle = new Span("Ricerca intelligente per l'istituto");
+        pretitle.addClassName("google-search-pretitle");
+
+        Paragraph tagline = new Paragraph("School ricerca documenti");
+        tagline.addClassName("google-search-tagline");
+
+        Paragraph description = new Paragraph("Una home più pulita, più riconoscibile e più vicina al linguaggio visivo di Google, con filtri e risultati già pronti per l'uso.");
+        description.addClassName("google-search-description");
+
+        heroSearchField = new TextField();
+        heroSearchField.setPlaceholder("Cerca documenti, circolari, regolamenti, modulistica...");
+        heroSearchField.setPrefixComponent(new Icon(VaadinIcon.SEARCH));
+        heroSearchField.setWidthFull();
+        heroSearchField.addClassName("google-search-input");
+        heroSearchField.addKeyPressListener(event -> {
+            if (event.getKey().getKeys().contains("Enter")) {
+                executeSearch(heroSearchField.getValue());
+            }
+        });
+
+        Button searchButton = new Button("Cerca", new Icon(VaadinIcon.SEARCH));
+        searchButton.addClassName("google-search-submit");
+        searchButton.addClickListener(e -> executeSearch(heroSearchField.getValue()));
+
+        Button luckyButton = new Button("Esplora esempi");
+        luckyButton.addClassName("google-search-secondary");
+        luckyButton.addClickListener(e -> executeSearch(
+                heroSearchField.getValue().isBlank() ? "regolamento gite scolastiche" : heroSearchField.getValue()
+        ));
+
+        HorizontalLayout searchBar = new HorizontalLayout(heroSearchField, searchButton);
+        searchBar.setWidthFull();
+        searchBar.setDefaultVerticalComponentAlignment(FlexComponent.Alignment.CENTER);
+        searchBar.expand(heroSearchField);
+        searchBar.addClassName("google-search-bar");
+
+        HorizontalLayout actions = new HorizontalLayout(searchBar, luckyButton);
+        actions.setDefaultVerticalComponentAlignment(FlexComponent.Alignment.CENTER);
+        actions.addClassName("google-search-actions");
+
+        HorizontalLayout quickLinks = new HorizontalLayout(
+                createQuickSearchPill("Circolari", "circolari studenti"),
+                createQuickSearchPill("PDF", "modulistica pdf scuola"),
+                createQuickSearchPill("Verbali", "verbali consiglio d'istituto"),
+                createQuickSearchPill("Didattica", "materiali didattici matematica")
+        );
+        quickLinks.setSpacing(true);
+        quickLinks.setPadding(false);
+        quickLinks.addClassName("google-search-quick-links");
+
+        content.add(pretitle, createBrand(false), tagline, description, actions, quickLinks);
+        hero.add(content);
+        return hero;
+    }
+
+    private Div createBrand(boolean compact) {
+        Div brand = new Div();
+        brand.addClassNames("school-brand", compact ? "compact" : "hero");
+
+        Div word = new Div();
+        word.addClassName("school-brand-word");
+        word.add(
+                createBrandLetter("S", "blue"),
+                createBrandLetter("c", "red"),
+                createBrandLetter("h", "yellow"),
+                createBrandLetter("o", "blue"),
+                createBrandLetter("o", "green"),
+                createBrandLetter("l", "red")
+        );
+
+        Span subtitle = new Span("ricerca documenti");
+        subtitle.addClassName("school-brand-subtitle");
+
+        brand.add(word, subtitle);
+        return brand;
+    }
+
+    private Span createBrandLetter(String letter, String colorClass) {
+        Span span = new Span(letter);
+        span.addClassNames("school-brand-letter", colorClass);
+        return span;
+    }
+
+    private Button createQuickSearchPill(String label, String query) {
+        Button pill = new Button(label);
+        pill.addClassName("google-search-pill");
+        pill.addClickListener(e -> executeSearch(query));
+        return pill;
+    }
+
+    private void executeSearch(String query) {
+        String normalizedQuery = query == null ? "" : query.trim();
+        if (normalizedQuery.isEmpty()) {
+            return;
+        }
+
+        if (!normalizedQuery.equals(heroSearchField.getValue())) {
+            heroSearchField.setValue(normalizedQuery);
+        }
+        if (!normalizedQuery.equals(headerSearchField.getValue())) {
+            headerSearchField.setValue(normalizedQuery);
+        }
+
+        heroSection.setVisible(false);
+        compactHeader.setVisible(true);
+        filtersDetails.setVisible(true);
+        searchResultsContainer.setVisible(true);
+        searchResultsContainer.removeAll();
+        addSimulatedResults(normalizedQuery, 1);
     }
 
     private Details createFiltersBar() {
@@ -367,6 +481,7 @@ public class GoogleSearchView extends Div {
         filtersContent.setPadding(false);
         filtersContent.setSpacing(true);
         filtersContent.setWidthFull();
+        filtersContent.addClassName("google-search-filters-content");
         filtersContent.setDefaultVerticalComponentAlignment(FlexComponent.Alignment.START);
         filtersContent.getStyle()
             .set("flex-wrap", "wrap")
@@ -426,6 +541,7 @@ public class GoogleSearchView extends Div {
         chip.setSpacing(false);
         chip.setPadding(false);
         chip.setDefaultVerticalComponentAlignment(Alignment.CENTER);
+        chip.addClassName("google-search-chip");
         chip.getStyle()
                 .set("background-color", "#e8f0fe")
                 .set("color", "#1a73e8")
@@ -459,10 +575,6 @@ public class GoogleSearchView extends Div {
         addSimulatedResults(currentQuery, 1);
     }
 
-    private void addSimulatedResults() {
-        addSimulatedResults("java programming", 1);
-    }
-
     private void addSimulatedResults(String query, int page) {
         currentQuery = query;
         currentPage = page;
@@ -486,6 +598,7 @@ public class GoogleSearchView extends Div {
                         + (!selectedFileTypes.isEmpty() ? " — Filtro tipo: " + String.join(", ", selectedFileTypes) : "")
                         + (!"Qualsiasi data".equals(selectedDateRange) ? " — Filtro data: " + selectedDateRange : "")
         );
+        resultsInfo.addClassName("google-search-results-info");
         resultsInfo.getStyle()
                 .set("color", "var(--lumo-secondary-text-color)")
                 .set("font-size", "14px")
@@ -494,6 +607,7 @@ public class GoogleSearchView extends Div {
 
         if (filteredResults.isEmpty()) {
             Div noResults = new Div();
+            noResults.addClassName("google-search-empty-state");
             noResults.getStyle()
                     .set("text-align", "center")
                     .set("padding", "40px 0");
@@ -691,6 +805,7 @@ public class GoogleSearchView extends Div {
         VerticalLayout card = new VerticalLayout();
         card.setPadding(false);
         card.setSpacing(false);
+        card.addClassName("google-search-result-card");
         card.getStyle()
                 .set("padding", "12px 0")
                 .set("border-bottom", "1px solid var(--lumo-contrast-10pct)");
@@ -699,9 +814,11 @@ public class GoogleSearchView extends Div {
         HorizontalLayout urlRow = new HorizontalLayout();
         urlRow.setSpacing(true);
         urlRow.setDefaultVerticalComponentAlignment(Alignment.CENTER);
+        urlRow.addClassName("google-search-url-row");
         urlRow.getStyle().set("margin", "0 0 4px 0");
 
         Paragraph url = new Paragraph(result.site + " › " + result.url);
+        url.addClassName("google-search-url");
         url.getStyle()
                 .set("margin", "0")
                 .set("font-size", "14px")
@@ -729,6 +846,7 @@ public class GoogleSearchView extends Div {
         title.setHref(result.url);
         title.setTarget("_blank");
         title.getElement().setAttribute("rel", "noopener noreferrer");
+        title.addClassName("google-search-result-title");
 
         Span titleText = new Span(result.title);
         Icon externalLinkIcon = FontAwesome.Solid.ARROW_UP_RIGHT_FROM_SQUARE.create();
@@ -750,6 +868,7 @@ public class GoogleSearchView extends Div {
 
         // Description
         Paragraph description = new Paragraph(result.description);
+        description.addClassName("google-search-result-description");
         description.getStyle()
                 .set("margin", "0")
                 .set("font-size", "14px")
@@ -762,6 +881,7 @@ public class GoogleSearchView extends Div {
         if (result.files != null && !result.files.isEmpty()) {
             HorizontalLayout typeBadges = new HorizontalLayout();
             typeBadges.setSpacing(true);
+            typeBadges.addClassName("google-search-type-badges");
             typeBadges.getStyle().set("margin-top", "8px");
 
             result.files.stream()
@@ -769,6 +889,7 @@ public class GoogleSearchView extends Div {
                     .distinct()
                     .forEach(type -> {
                         Span badge = new Span(type);
+                        badge.addClassName("google-search-type-badge");
                         badge.getStyle()
                                 .set("font-size", "11px")
                                 .set("font-weight", "600")
@@ -784,6 +905,7 @@ public class GoogleSearchView extends Div {
 
         if (result.videoUrl != null) {
             Span videoBadge = new Span("VIDEO");
+            videoBadge.addClassName("google-search-video-badge");
             videoBadge.getStyle()
                     .set("font-size", "11px")
                     .set("font-weight", "600")
@@ -801,6 +923,7 @@ public class GoogleSearchView extends Div {
             VerticalLayout filesContainer = new VerticalLayout();
             filesContainer.setPadding(false);
             filesContainer.setSpacing(true);
+            filesContainer.addClassName("google-search-files-container");
             filesContainer.getStyle()
                     .set("margin-top", "12px")
                     .set("padding", "12px")
@@ -811,6 +934,7 @@ public class GoogleSearchView extends Div {
                 HorizontalLayout fileRow = new HorizontalLayout();
                 fileRow.setDefaultVerticalComponentAlignment(Alignment.CENTER);
                 fileRow.setSpacing(true);
+                fileRow.addClassName("google-search-file-row");
                 fileRow.getStyle().set("padding", "4px 0");
 
                 Icon fileIcon = getFileIcon(file.type);
@@ -838,6 +962,7 @@ public class GoogleSearchView extends Div {
         // Add video player if video URL is present
         if (result.videoUrl != null) {
             Div videoContainer = new Div();
+            videoContainer.addClassName("google-search-video-container");
             videoContainer.getStyle()
                     .set("margin-top", "12px")
                     .set("background-color", "#000")
@@ -903,6 +1028,7 @@ public class GoogleSearchView extends Div {
         pagination.setSpacing(true);
         pagination.setPadding(true);
         pagination.setDefaultVerticalComponentAlignment(FlexComponent.Alignment.CENTER);
+        pagination.addClassName("google-search-pagination");
         pagination.getStyle()
                 .set("margin-top", "20px")
                 .set("margin-bottom", "20px");
@@ -978,6 +1104,7 @@ public class GoogleSearchView extends Div {
     private Button createChatbotFab() {
         Button fab = new Button(new Icon(VaadinIcon.CHAT));
         fab.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_LARGE);
+        fab.addClassName("google-search-chat-fab");
         fab.getStyle()
                 .set("position", "fixed")
                 .set("bottom", "24px")
@@ -995,6 +1122,7 @@ public class GoogleSearchView extends Div {
 
     private Div createChatbotWindow(Component chatContainer, Component inputLayout) {
         Div window = new Div();
+        window.addClassName("google-search-chat-window");
         window.getStyle()
                 .set("position", "fixed")
                 .set("bottom", "24px")
