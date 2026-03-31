@@ -79,6 +79,7 @@
     box-shadow: var(--school-shadow);
     text-align: center;
     overflow: hidden;
+    animation: heroEntrance 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .google-search-hero-content::before,
@@ -119,6 +120,20 @@
     font-weight: 700;
     letter-spacing: 0.02em;
     margin-bottom: 18px;
+    position: relative;
+    overflow: hidden;
+}
+
+.google-search-pretitle::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(105deg,
+        transparent 30%,
+        rgba(255, 255, 255, 0.55) 50%,
+        transparent 70%);
+    background-size: 200% 100%;
+    animation: shimmer 3.2s ease-in-out infinite;
 }
 
 .google-search-tagline {
@@ -219,14 +234,17 @@ vaadin-text-field.google-search-input::part(input-field) {
     background: rgba(255, 255, 255, 0.96);
     border: 1px solid rgba(32, 33, 36, 0.1);
     box-shadow: 0 10px 30px rgba(32, 33, 36, 0.08);
-    transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+    transition: transform 260ms cubic-bezier(0.34, 1.56, 0.64, 1),
+                box-shadow 260ms ease,
+                border-color 200ms ease;
 }
 
 vaadin-text-field.google-search-input:hover::part(input-field),
 vaadin-text-field.google-search-input[focused]::part(input-field) {
-    transform: translateY(-1px);
-    border-color: rgba(66, 133, 244, 0.26);
-    box-shadow: 0 16px 36px rgba(66, 133, 244, 0.14);
+    transform: translateY(-2px) scale(1.005);
+    border-color: rgba(66, 133, 244, 0.35);
+    box-shadow: 0 0 0 4px rgba(66, 133, 244, 0.10),
+                0 18px 40px rgba(66, 133, 244, 0.18);
 }
 
 vaadin-text-field.google-search-input::part(value) {
@@ -243,7 +261,9 @@ vaadin-button.google-search-submit,
 vaadin-button.google-search-secondary,
 vaadin-button.google-search-pill {
     border-radius: 999px;
-    transition: transform 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
+    transition: transform 260ms cubic-bezier(0.34, 1.56, 0.64, 1),
+                box-shadow 260ms ease,
+                background-color 200ms ease;
 }
 
 vaadin-button.google-search-submit::part(label),
@@ -258,12 +278,25 @@ vaadin-button.google-search-submit::part(button) {
     color: white;
     background: linear-gradient(135deg, #4285f4 0%, #1a73e8 100%);
     box-shadow: 0 16px 30px rgba(26, 115, 232, 0.24);
+    position: relative;
+    overflow: hidden;
+}
+
+vaadin-button.google-search-submit:hover::part(button) {
+    box-shadow: 0 20px 40px rgba(26, 115, 232, 0.38);
 }
 
 vaadin-button.google-search-submit:hover::part(button),
 vaadin-button.google-search-secondary:hover::part(button),
 vaadin-button.google-search-pill:hover::part(button) {
-    transform: translateY(-2px);
+    transform: translateY(-3px) scale(1.03);
+}
+
+vaadin-button.google-search-submit:active::part(button),
+vaadin-button.google-search-secondary:active::part(button),
+vaadin-button.google-search-pill:active::part(button) {
+    transform: translateY(0) scale(0.97);
+    transition-duration: 100ms;
 }
 
 vaadin-button.google-search-secondary::part(button) {
@@ -336,13 +369,27 @@ vaadin-button.google-search-pill:hover::part(button) {
     border-radius: 22px;
     background: rgba(255, 255, 255, 0.88);
     box-shadow: 0 14px 34px rgba(32, 33, 36, 0.06);
-    transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+    transition: transform 280ms cubic-bezier(0.34, 1.56, 0.64, 1),
+                box-shadow 280ms ease,
+                border-color 200ms ease;
+    animation: cardEntrance 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+.google-search-result-card:nth-child(1)  { animation-delay:  40ms; }
+.google-search-result-card:nth-child(2)  { animation-delay:  90ms; }
+.google-search-result-card:nth-child(3)  { animation-delay: 140ms; }
+.google-search-result-card:nth-child(4)  { animation-delay: 190ms; }
+.google-search-result-card:nth-child(5)  { animation-delay: 240ms; }
+.google-search-result-card:nth-child(6)  { animation-delay: 290ms; }
+.google-search-result-card:nth-child(7)  { animation-delay: 340ms; }
+.google-search-result-card:nth-child(8)  { animation-delay: 390ms; }
+.google-search-result-card:nth-child(9)  { animation-delay: 440ms; }
+.google-search-result-card:nth-child(10) { animation-delay: 490ms; }
+
 .google-search-result-card:hover {
-    transform: translateY(-3px);
-    border-color: rgba(66, 133, 244, 0.16);
-    box-shadow: 0 18px 38px rgba(66, 133, 244, 0.14);
+    transform: translateY(-4px) scale(1.008);
+    border-color: rgba(66, 133, 244, 0.20);
+    box-shadow: 0 22px 44px rgba(66, 133, 244, 0.16);
 }
 
 .google-search-url {
@@ -402,9 +449,39 @@ vaadin-button.google-search-chat-fab::part(button) {
     100% {
         transform: translate3d(0, 0, 0) scale(1);
     }
-    50% {
-        transform: translate3d(0, 14px, 0) scale(1.04);
+    33% {
+        transform: translate3d(6px, 10px, 0) scale(1.03);
     }
+    66% {
+        transform: translate3d(-4px, 18px, 0) scale(1.05);
+    }
+}
+
+@keyframes heroEntrance {
+    from {
+        opacity: 0;
+        transform: translateY(28px) scale(0.97);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes cardEntrance {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes shimmer {
+    0%   { background-position: 200% center; }
+    100% { background-position: -200% center; }
 }
 
 @media (max-width: 900px) {
