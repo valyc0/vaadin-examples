@@ -1,6 +1,9 @@
 package io.bootify.my_app.views;
 
 import com.vaadin.flow.component.Component;
+import com.vaadin.flow.component.AttachEvent;
+import com.vaadin.flow.component.DetachEvent;
+import com.vaadin.flow.component.ClientCallable;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
@@ -30,8 +33,11 @@ import io.bootify.my_app.component.StructuredTree;
 import io.bootify.my_app.domain.Product;
 import io.bootify.my_app.model.TreeResponse;
 import io.bootify.my_app.service.ProductService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
+import com.vaadin.flow.shared.Registration;
 
 import java.util.List;
 import java.util.Set;
@@ -41,6 +47,9 @@ import java.math.BigDecimal;
 @Route(value = "generic-grid", layout = MainLayout.class)
 @PageTitle("Generic Grid - Prodotti")
 public class GenericGridView extends VerticalLayout {
+
+    private static final int POLL_INTERVAL_MS = 10_000;
+    private static final Logger log = LoggerFactory.getLogger(GenericGridView.class);
 
     private final ProductService productService;
     private final GenericPaginatedGrid<Product> productGrid = new GenericPaginatedGrid<>();
@@ -53,6 +62,7 @@ public class GenericGridView extends VerticalLayout {
     // Bulk action bar (multi-select)
     private final Span selectionLabel = new Span();
     private final HorizontalLayout bulkActionBar = new HorizontalLayout();
+    private Registration pollRegistration;
 
     public GenericGridView(@Autowired ProductService productService) {
         this.productService = productService;
@@ -122,8 +132,8 @@ public class GenericGridView extends VerticalLayout {
         productGrid.setDefaultSort("id", org.springframework.data.domain.Sort.Direction.ASC);
 
         // Ricarica grid quando cambiano filtri (azzera selezione al cambio filtro)
-        searchField.addValueChangeListener(e -> { productGrid.clearSelection(); productGrid.refresh(); });
-        categoryFilter.addValueChangeListener(e -> { productGrid.clearSelection(); productGrid.refresh(); });
+        searchField.addValueChangeListener(e -> { productGrid.clearSelection(); refreshGridData("search-filter-change"); });
+        categoryFilter.addValueChangeListener(e -> { productGrid.clearSelection(); refreshGridData("category-filter-change"); });
 
         // Filtro Strutturato
         Details strutturaDet = new Details();
@@ -131,7 +141,7 @@ public class GenericGridView extends VerticalLayout {
         strutturaDet.setContent(structuredTree);
         strutturaDet.setOpened(false);
         strutturaDet.setWidthFull();
-        structuredTree.setSelectionListener(item -> productGrid.refresh());
+        structuredTree.setSelectionListener(item -> refreshGridData("structured-filter-change"));
 
         // Pulsante reset globale per tutti i filtri
         Button resetAllButton = new Button("Pulisci Filtri", new Icon(VaadinIcon.ERASER));
@@ -141,7 +151,7 @@ public class GenericGridView extends VerticalLayout {
             categoryFilter.setValue("Tutti");
             structuredTree.clearSelection();
             productGrid.clearSelection();
-            productGrid.refresh();
+            refreshGridData("reset-filters");
             Notification.show("Filtri azzerati", 2000, Notification.Position.BOTTOM_CENTER);
         });
 
@@ -180,6 +190,21 @@ public class GenericGridView extends VerticalLayout {
         add(title, totalLabel, toolbar, filterLayout, strutturaDet, resetAllButton, bulkActionBar, productGrid);
         expand(productGrid);
     }
+
+    @Override
+    protected void onAttach(AttachEvent attachEvent) {
+        super.onAttach(attachEvent);
+        startPolling();
+        registerBeforeUnloadHandler();
+        refreshGridData("attach");
+    }
+
+    @Override
+    protected void onDetach(DetachEvent detachEvent) {
+        unregisterBeforeUnloadHandler();
+        stopPolling();
+        super.onDetach(detachEvent);
+    }
     
     private HorizontalLayout createToolbar() {
         Button addButton = new Button("Aggiungi", new Icon(VaadinIcon.PLUS));
@@ -187,13 +212,62 @@ public class GenericGridView extends VerticalLayout {
         addButton.addClickListener(e -> openAddDialog());
         
         Button refreshButton = new Button("Aggiorna", new Icon(VaadinIcon.REFRESH));
-        refreshButton.addClickListener(e -> productGrid.refresh());
+        refreshButton.addClickListener(e -> refreshGridData("toolbar-button"));
         
         HorizontalLayout toolbar = new HorizontalLayout(addButton, refreshButton);
         toolbar.setDefaultVerticalComponentAlignment(FlexComponent.Alignment.CENTER);
         toolbar.setSpacing(true);
         
         return toolbar;
+    }
+
+    private void startPolling() {
+        getUI().ifPresent(ui -> {
+            ui.setPollInterval(POLL_INTERVAL_MS);
+            if (pollRegistration == null) {
+                pollRegistration = ui.addPollListener(event -> refreshGridData("polling-10s"));
+            }
+        });
+    }
+
+    private void stopPolling() {
+        if (pollRegistration != null) {
+            pollRegistration.remove();
+            pollRegistration = null;
+        }
+        getUI().ifPresent(ui -> ui.setPollInterval(-1));
+    }
+
+    private void refreshGridData(String source) {
+        log.info("GenericGrid refresh triggered: source={}, search='{}', category='{}'",
+                source,
+                searchField.getValue(),
+                categoryFilter.getValue());
+        productGrid.refresh();
+    }
+
+    private void registerBeforeUnloadHandler() {
+        getElement().executeJs(
+                "if (!$0.__genericGridBeforeUnloadHandler) {"
+                        + "  $0.__genericGridBeforeUnloadHandler = () => $0.$server.onBeforeUnload();"
+                        + "  window.addEventListener('beforeunload', $0.__genericGridBeforeUnloadHandler);"
+                        + "}",
+                getElement());
+    }
+
+    private void unregisterBeforeUnloadHandler() {
+        getElement().executeJs(
+                "if ($0.__genericGridBeforeUnloadHandler) {"
+                        + "  window.removeEventListener('beforeunload', $0.__genericGridBeforeUnloadHandler);"
+                        + "  delete $0.__genericGridBeforeUnloadHandler;"
+                        + "}",
+                getElement());
+    }
+
+    @ClientCallable
+    private void onBeforeUnload() {
+        log.info("GenericGrid beforeunload received, stopping polling");
+        stopPolling();
     }
     
     private void configureGrid() {
@@ -333,7 +407,7 @@ public class GenericGridView extends VerticalLayout {
     
     private void saveProduct(Product product) {
         productService.save(product);
-        productGrid.refresh();
+        refreshGridData("save-product");
     }
     
     private void updateTotalLabel() {
@@ -364,7 +438,7 @@ public class GenericGridView extends VerticalLayout {
     private void deleteProduct(Product product) {
         try {
             productService.delete(product.getId());
-            productGrid.refresh();
+            refreshGridData("delete-product");
             Notification.show("Prodotto eliminato con successo", 3000, Notification.Position.BOTTOM_START)
                     .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
         } catch (Exception e) {
@@ -392,7 +466,7 @@ public class GenericGridView extends VerticalLayout {
                 List<Long> ids = selected.stream().map(Product::getId).toList();
                 productService.deleteByIds(ids);
                 productGrid.clearSelection();
-                productGrid.refresh();
+                refreshGridData("bulk-delete");
                 Notification.show(count + (count == 1 ? " prodotto eliminato" : " prodotti eliminati"),
                         3000, Notification.Position.BOTTOM_START)
                         .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
