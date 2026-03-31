@@ -2,6 +2,7 @@ package io.bootify.my_app.views;
 
 import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.Component;
+import com.vaadin.flow.component.dependency.CssImport;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
@@ -33,6 +34,7 @@ import java.util.stream.Collectors;
 
 @Route(value = "google-search", layout = MainLayout.class)
 @PageTitle("Google Search")
+@CssImport("./google-search-view.css")
 public class GoogleSearchView extends Div {
 
     private final VerticalLayout searchResultsContainer;

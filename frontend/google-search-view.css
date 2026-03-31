@@ -1,0 +1,448 @@
+.google-search-view {
+    position: relative;
+    min-height: 100%;
+    overflow-x: hidden;
+    --school-blue: #4285f4;
+    --school-red: #ea4335;
+    --school-yellow: #fbbc05;
+    --school-green: #34a853;
+    --school-ink: #202124;
+    --school-muted: #5f6368;
+    --school-surface: rgba(255, 255, 255, 0.88);
+    --school-shadow: 0 20px 60px rgba(66, 133, 244, 0.14);
+    --school-font-body: "Segoe UI", "Noto Sans", Ubuntu, Cantarell, Arial, sans-serif;
+    --school-font-display: "Trebuchet MS", "Segoe UI", "Noto Sans", Arial, sans-serif;
+}
+
+.google-search-view::before,
+.google-search-view::after {
+    content: '';
+    position: absolute;
+    border-radius: 999px;
+    filter: blur(16px);
+    pointer-events: none;
+    z-index: 0;
+}
+
+.google-search-view::before {
+    width: 280px;
+    height: 280px;
+    top: 110px;
+    left: -110px;
+    background: rgba(66, 133, 244, 0.14);
+}
+
+.google-search-view::after {
+    width: 220px;
+    height: 220px;
+    right: -70px;
+    bottom: 120px;
+    background: rgba(52, 168, 83, 0.12);
+}
+
+.google-search-shell {
+    position: relative;
+    z-index: 1;
+}
+
+.google-search-header {
+    padding: 20px clamp(18px, 4vw, 42px);
+    border-bottom: 1px solid rgba(32, 33, 36, 0.08);
+    background: rgba(255, 255, 255, 0.82);
+    backdrop-filter: blur(18px);
+    box-shadow: 0 10px 30px rgba(32, 33, 36, 0.06);
+}
+
+.google-search-header-column {
+    gap: 8px;
+}
+
+.google-search-header-helper {
+    font-size: 0.9rem;
+    color: var(--school-muted);
+    padding-left: 18px;
+}
+
+.google-search-hero {
+    display: flex;
+    justify-content: center;
+    padding: clamp(48px, 8vw, 88px) 18px 34px;
+}
+
+.google-search-hero-content {
+    position: relative;
+    width: min(960px, 100%);
+    padding: clamp(28px, 5vw, 56px);
+    border-radius: 36px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.72) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.9);
+    box-shadow: var(--school-shadow);
+    text-align: center;
+    overflow: hidden;
+}
+
+.google-search-hero-content::before,
+.google-search-hero-content::after {
+    content: '';
+    position: absolute;
+    border-radius: 50%;
+    opacity: 0.75;
+}
+
+.google-search-hero-content::before {
+    width: 220px;
+    height: 220px;
+    top: -90px;
+    right: -60px;
+    background: radial-gradient(circle, rgba(66, 133, 244, 0.24), transparent 70%);
+    animation: floatBlob 9s ease-in-out infinite;
+}
+
+.google-search-hero-content::after {
+    width: 170px;
+    height: 170px;
+    bottom: -70px;
+    left: -40px;
+    background: radial-gradient(circle, rgba(251, 188, 5, 0.22), transparent 68%);
+    animation: floatBlob 11s ease-in-out infinite reverse;
+}
+
+.google-search-pretitle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    background: rgba(66, 133, 244, 0.1);
+    color: var(--school-blue);
+    font-size: 0.86rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    margin-bottom: 18px;
+}
+
+.google-search-tagline {
+    margin: 10px 0 8px;
+    font-family: var(--school-font-display);
+    font-size: clamp(1.35rem, 2vw, 1.75rem);
+    font-weight: 600;
+    color: var(--school-ink);
+}
+
+.google-search-description {
+    margin: 0 0 26px;
+    max-width: 680px;
+    color: var(--school-muted);
+    font-size: 1.02rem;
+    line-height: 1.7;
+}
+
+.google-search-view .school-brand {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.google-search-view .school-brand.compact {
+    align-items: flex-start;
+    min-width: fit-content;
+}
+
+.google-search-view .school-brand-word {
+    display: inline-flex;
+    align-items: baseline;
+    letter-spacing: -0.05em;
+}
+
+.google-search-view .school-brand.hero .school-brand-word {
+    font-family: var(--school-font-display);
+    font-size: clamp(3.7rem, 9vw, 5.6rem);
+    font-weight: 700;
+}
+
+.google-search-view .school-brand.compact .school-brand-word {
+    font-family: var(--school-font-display);
+    font-size: clamp(2rem, 3vw, 2.55rem);
+    font-weight: 700;
+}
+
+.google-search-view .school-brand-letter.blue {
+    color: var(--school-blue);
+}
+
+.google-search-view .school-brand-letter.red {
+    color: var(--school-red);
+}
+
+.google-search-view .school-brand-letter.yellow {
+    color: var(--school-yellow);
+}
+
+.google-search-view .school-brand-letter.green {
+    color: var(--school-green);
+}
+
+.google-search-view .school-brand-subtitle {
+    text-transform: uppercase;
+    letter-spacing: 0.34em;
+    color: var(--school-muted);
+    font-size: 0.7rem;
+    font-weight: 800;
+    padding-left: 0.34em;
+}
+
+.google-search-view .school-brand.compact .school-brand-subtitle {
+    letter-spacing: 0.24em;
+    font-size: 0.64rem;
+}
+
+.google-search-actions {
+    width: min(760px, 100%);
+    gap: 14px;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+.google-search-bar {
+    gap: 10px;
+}
+
+vaadin-text-field.google-search-input {
+    --lumo-border-radius-m: 999px;
+}
+
+vaadin-text-field.google-search-input::part(input-field) {
+    min-height: 58px;
+    padding: 0 12px 0 16px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.96);
+    border: 1px solid rgba(32, 33, 36, 0.1);
+    box-shadow: 0 10px 30px rgba(32, 33, 36, 0.08);
+    transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+}
+
+vaadin-text-field.google-search-input:hover::part(input-field),
+vaadin-text-field.google-search-input[focused]::part(input-field) {
+    transform: translateY(-1px);
+    border-color: rgba(66, 133, 244, 0.26);
+    box-shadow: 0 16px 36px rgba(66, 133, 244, 0.14);
+}
+
+vaadin-text-field.google-search-input::part(value) {
+    font-size: 1rem;
+    color: var(--school-ink);
+}
+
+vaadin-text-field.google-search-input::part(prefix) {
+    color: var(--school-muted);
+    padding-left: 2px;
+}
+
+vaadin-button.google-search-submit,
+vaadin-button.google-search-secondary,
+vaadin-button.google-search-pill {
+    border-radius: 999px;
+    transition: transform 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
+}
+
+vaadin-button.google-search-submit::part(label),
+vaadin-button.google-search-secondary::part(label),
+vaadin-button.google-search-pill::part(label) {
+    font-weight: 700;
+}
+
+vaadin-button.google-search-submit::part(button) {
+    min-height: 56px;
+    padding: 0 22px;
+    color: white;
+    background: linear-gradient(135deg, #4285f4 0%, #1a73e8 100%);
+    box-shadow: 0 16px 30px rgba(26, 115, 232, 0.24);
+}
+
+vaadin-button.google-search-submit:hover::part(button),
+vaadin-button.google-search-secondary:hover::part(button),
+vaadin-button.google-search-pill:hover::part(button) {
+    transform: translateY(-2px);
+}
+
+vaadin-button.google-search-secondary::part(button) {
+    min-height: 56px;
+    padding: 0 22px;
+    color: var(--school-ink);
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(32, 33, 36, 0.1);
+    box-shadow: 0 10px 24px rgba(32, 33, 36, 0.08);
+}
+
+.google-search-quick-links {
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+vaadin-button.google-search-pill::part(button) {
+    min-height: 38px;
+    padding: 0 16px;
+    color: var(--school-ink);
+    background: rgba(255, 255, 255, 0.74);
+    border: 1px solid rgba(66, 133, 244, 0.1);
+}
+
+vaadin-button.google-search-pill:hover::part(button) {
+    box-shadow: 0 10px 20px rgba(66, 133, 244, 0.12);
+}
+
+.google-search-filters {
+    background: transparent;
+    padding: 0 16px;
+}
+
+.google-search-filters::part(summary) {
+    margin: 0 auto;
+    width: min(960px, 100%);
+    padding: 14px 20px;
+    border-radius: 22px;
+    background: rgba(255, 255, 255, 0.8);
+    box-shadow: 0 10px 26px rgba(32, 33, 36, 0.06);
+}
+
+.google-search-filters::part(content) {
+    margin-top: 10px;
+}
+
+.google-search-active-filters {
+    margin-top: 14px;
+    margin-bottom: 6px;
+}
+
+.google-search-chip {
+    box-shadow: 0 8px 16px rgba(66, 133, 244, 0.12);
+}
+
+.google-search-results {
+    padding-top: 10px;
+    padding-bottom: 42px;
+}
+
+.google-search-results-info {
+    padding: 0 12px;
+}
+
+.google-search-result-card {
+    position: relative;
+    padding: 18px 18px 20px !important;
+    margin-bottom: 10px;
+    border: 1px solid rgba(32, 33, 36, 0.06);
+    border-radius: 22px;
+    background: rgba(255, 255, 255, 0.88);
+    box-shadow: 0 14px 34px rgba(32, 33, 36, 0.06);
+    transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+}
+
+.google-search-result-card:hover {
+    transform: translateY(-3px);
+    border-color: rgba(66, 133, 244, 0.16);
+    box-shadow: 0 18px 38px rgba(66, 133, 244, 0.14);
+}
+
+.google-search-url {
+    overflow-wrap: anywhere;
+}
+
+a.google-search-result-title {
+    color: #1a0dab;
+    font-family: var(--school-font-display);
+}
+
+a.google-search-result-title:hover {
+    color: #174ea6;
+}
+
+.google-search-result-description {
+    color: #3c4043;
+}
+
+.google-search-type-badges,
+.google-search-file-row {
+    flex-wrap: wrap;
+}
+
+.google-search-files-container {
+    border: 1px solid rgba(66, 133, 244, 0.08);
+    background: linear-gradient(180deg, rgba(248, 250, 255, 0.96) 0%, rgba(240, 245, 255, 0.82) 100%) !important;
+}
+
+.google-search-video-container {
+    box-shadow: 0 14px 30px rgba(0, 0, 0, 0.18);
+}
+
+.google-search-empty-state {
+    padding: 36px 24px !important;
+    border-radius: 28px;
+    background: rgba(255, 255, 255, 0.84);
+    box-shadow: 0 12px 30px rgba(32, 33, 36, 0.06);
+}
+
+.google-search-pagination {
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+vaadin-button.google-search-chat-fab::part(button) {
+    background: linear-gradient(135deg, #1a73e8 0%, #34a853 100%);
+    box-shadow: 0 18px 34px rgba(26, 115, 232, 0.26);
+}
+
+.google-search-chat-window {
+    backdrop-filter: blur(22px);
+}
+
+@keyframes floatBlob {
+    0%,
+    100% {
+        transform: translate3d(0, 0, 0) scale(1);
+    }
+    50% {
+        transform: translate3d(0, 14px, 0) scale(1.04);
+    }
+}
+
+@media (max-width: 900px) {
+    .google-search-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .google-search-header {
+        flex-wrap: wrap;
+    }
+}
+
+@media (max-width: 720px) {
+    .google-search-hero {
+        padding-top: 28px;
+    }
+
+    .google-search-hero-content {
+        border-radius: 28px;
+        padding: 24px 18px 26px;
+    }
+
+    .google-search-header {
+        padding: 18px 16px;
+    }
+
+    .google-search-view .school-brand.hero .school-brand-word {
+        font-size: clamp(3rem, 16vw, 4.1rem);
+    }
+
+    .google-search-tagline {
+        font-size: 1.2rem;
+    }
+
+    vaadin-text-field.google-search-input::part(input-field),
+    vaadin-button.google-search-submit::part(button),
+    vaadin-button.google-search-secondary::part(button) {
+        min-height: 52px;
+    }
+}
