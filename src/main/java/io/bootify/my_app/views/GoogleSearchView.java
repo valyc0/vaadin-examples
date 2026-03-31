@@ -766,7 +766,7 @@ public class GoogleSearchView extends Div {
                         "Watch this comprehensive video tutorial covering all aspects of " + query + ". Duration: 45:30. Perfect for visual learners. (Risultato " + resultNumber + " - Pagina " + page + ")",
                         "Video Platform",
                         null,
-                        "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+                        "https://www.w3schools.com/html/movie.mp4",
                         now.minusMonths(1)
                 ));
             } else if (i == 4) {
