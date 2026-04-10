@@ -5,13 +5,14 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
+import com.vaadin.flow.component.confirmdialog.ConfirmDialog;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.formlayout.FormLayout;
-import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.dnd.GridDropLocation;
 import com.vaadin.flow.component.grid.dnd.GridDropMode;
 import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.Pre;
+import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
@@ -24,21 +25,35 @@ import com.vaadin.flow.component.treegrid.TreeGrid;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import io.bootify.my_app.model.TreeResponse;
+import io.bootify.my_app.service.TreeStructureOperationService;
+import io.bootify.my_app.service.TreeStructureOperationService.TreeNodeCreateRequest;
+import io.bootify.my_app.service.TreeStructureOperationService.TreeNodeDeleteRequest;
+import io.bootify.my_app.service.TreeStructureOperationService.TreeNodeMovePosition;
+import io.bootify.my_app.service.TreeStructureOperationService.TreeNodeMoveRequest;
+import io.bootify.my_app.service.TreeStructureOperationService.TreeNodeRenameRequest;
+import io.bootify.my_app.service.TreeStructureValidationService;
+import io.bootify.my_app.service.TreeStructureValidationService.TreeOperationValidationResult;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Supplier;
 
 @Route(value = "tree-structure", layout = MainLayout.class)
 @PageTitle("Gestione Struttura Albero")
 public class TreeStructureManagementView extends VerticalLayout {
 
+    private final TreeStructureValidationService treeValidationService;
+    private final TreeStructureOperationService treeOperationService;
     private final TreeGrid<TreeResponse> tree = new TreeGrid<>();
     private final List<TreeResponse> rootItems = new ArrayList<>();
     private TreeResponse draggedItem = null;
     private Button expandAllButton;
     private boolean isExpanded = false;
 
-    public TreeStructureManagementView() {
+    public TreeStructureManagementView(final TreeStructureValidationService treeValidationService,
+            final TreeStructureOperationService treeOperationService) {
+        this.treeValidationService = treeValidationService;
+        this.treeOperationService = treeOperationService;
         setSizeFull();
         setPadding(true);
         setSpacing(true);
@@ -100,11 +115,18 @@ public class TreeStructureManagementView extends VerticalLayout {
                 .setWidth("120px");
 
         tree.addComponentColumn(item -> {
+            Button editBtn = new Button(new Icon(VaadinIcon.EDIT));
+            editBtn.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_TERTIARY);
+            editBtn.addClickListener(e -> openRenameDialog(item));
+
             Button deleteBtn = new Button(new Icon(VaadinIcon.TRASH));
             deleteBtn.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_TERTIARY);
             deleteBtn.addClickListener(e -> deleteItem(item));
-            return deleteBtn;
-        }).setHeader("Azioni").setWidth("100px").setFlexGrow(0);
+
+            HorizontalLayout actions = new HorizontalLayout(editBtn, deleteBtn);
+            actions.setSpacing(false);
+            return actions;
+        }).setHeader("Azioni").setWidth("140px").setFlexGrow(0);
 
         tree.setItems(rootItems, TreeResponse::getChildren);
         tree.setWidthFull();
@@ -134,25 +156,14 @@ public class TreeStructureManagementView extends VerticalLayout {
                 return;
             }
 
-            // Rimuovi l'item dalla sua posizione originale
-            removeItemFromTree(draggedItem);
-
-            if (targetItem == null) {
-                // Drop su area vuota - aggiungi come root
-                rootItems.add(draggedItem);
-            } else if (dropLocation == GridDropLocation.ON_TOP) {
-                // Drop sopra un item - diventa figlio
-                targetItem.getChildren().add(draggedItem);
-            } else if (dropLocation == GridDropLocation.ABOVE) {
-                // Drop sopra - inserisci prima del target
-                insertBefore(targetItem, draggedItem);
-            } else if (dropLocation == GridDropLocation.BELOW) {
-                // Drop sotto - inserisci dopo il target
-                insertAfter(targetItem, draggedItem);
+            if (targetItem != null && isDescendantOf(draggedItem, targetItem)) {
+                Notification.show("Non puoi spostare un nodo dentro un suo discendente.",
+                                3000, Notification.Position.MIDDLE)
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                return;
             }
 
-            refreshTree();
-            tree.expand(targetItem);
+            requestMove(draggedItem, targetItem, dropLocation);
         });
     }
 
@@ -295,12 +306,7 @@ public class TreeStructureManagementView extends VerticalLayout {
                     descriptionField.getValue()
             );
 
-            rootItems.add(newItem);
-            refreshTree();
-            dialog.close();
-            
-            Notification.show("Elemento aggiunto. Trascinalo per riorganizzare la struttura.", 3000, Notification.Position.BOTTOM_CENTER)
-                    .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                requestCreate(newItem, dialog);
         });
         saveButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
@@ -319,9 +325,189 @@ public class TreeStructureManagementView extends VerticalLayout {
     }
 
     private void deleteItem(TreeResponse item) {
+        requestDelete(item);
+    }
+
+    private void openRenameDialog(final TreeResponse item) {
+        Dialog dialog = new Dialog();
+        dialog.setHeaderTitle("Cambia nome elemento");
+
+        TextField descriptionField = new TextField("Descrizione");
+        descriptionField.setWidthFull();
+        descriptionField.setValue(item.getDescrizione() != null ? item.getDescrizione() : "");
+        descriptionField.setRequired(true);
+
+        Button saveButton = new Button("Salva", event -> {
+            String newDescription = descriptionField.getValue() != null
+                    ? descriptionField.getValue().trim() : "";
+            if (newDescription.isEmpty()) {
+                descriptionField.setInvalid(true);
+                descriptionField.setErrorMessage("La descrizione e' obbligatoria");
+                return;
+            }
+            descriptionField.setInvalid(false);
+            requestRename(item, newDescription, dialog);
+        });
+        saveButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+
+        Button cancelButton = new Button("Annulla", event -> dialog.close());
+
+        HorizontalLayout buttons = new HorizontalLayout(saveButton, cancelButton);
+        VerticalLayout layout = new VerticalLayout(descriptionField, buttons);
+        layout.setPadding(false);
+        layout.setSpacing(true);
+        layout.setAlignItems(FlexComponent.Alignment.STRETCH);
+
+        dialog.add(layout);
+        dialog.open();
+    }
+
+    private void requestCreate(final TreeResponse newItem, final Dialog sourceDialog) {
+        TreeNodeCreateRequest request = new TreeNodeCreateRequest(
+                newItem.getCode(),
+                newItem.getType(),
+                newItem.getDescrizione()
+        );
+
+        executeValidatedOperation(
+                "Conferma creazione",
+            () -> treeValidationService.verifyCreate(request),
+                () -> {
+                    treeOperationService.createNode(request);
+                    rootItems.add(newItem);
+                    refreshTree();
+                    sourceDialog.close();
+                    Notification.show("Elemento aggiunto. Trascinalo per riorganizzare la struttura.",
+                                    3000, Notification.Position.BOTTOM_CENTER)
+                            .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                }
+        );
+    }
+
+    private void requestMove(final TreeResponse item, final TreeResponse targetItem,
+            final GridDropLocation dropLocation) {
+        TreeNodeMovePosition movePosition = mapMovePosition(dropLocation, targetItem);
+        TreeNodeMoveRequest request = new TreeNodeMoveRequest(
+                item.getCode(),
+                targetItem != null ? targetItem.getCode() : null,
+                movePosition
+        );
+
+        executeValidatedOperation(
+                "Conferma spostamento",
+            () -> treeValidationService.verifyMove(request),
+                () -> {
+                    treeOperationService.moveNode(request);
+                    applyMove(item, targetItem, dropLocation);
+                    Notification.show("Spostamento completato", 2000, Notification.Position.BOTTOM_CENTER)
+                            .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                }
+        );
+    }
+
+    private void requestDelete(final TreeResponse item) {
+        TreeNodeDeleteRequest request = new TreeNodeDeleteRequest(item.getCode());
+
+        executeValidatedOperation(
+                "Conferma eliminazione",
+            () -> treeValidationService.verifyDelete(request),
+                () -> {
+                    treeOperationService.deleteNode(request);
+                    removeItemFromTree(item);
+                    refreshTree();
+                    Notification.show("Elemento eliminato", 2000, Notification.Position.BOTTOM_CENTER)
+                            .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                }
+        );
+    }
+
+    private void requestRename(final TreeResponse item, final String newDescription,
+            final Dialog sourceDialog) {
+        TreeNodeRenameRequest request = new TreeNodeRenameRequest(item.getCode(), newDescription);
+
+        executeValidatedOperation(
+                "Conferma cambio nome",
+                () -> treeValidationService.verifyRename(request),
+                () -> {
+                    treeOperationService.renameNode(request);
+                    item.setDescrizione(newDescription);
+                    refreshTree();
+                    sourceDialog.close();
+                    Notification.show("Nome elemento aggiornato", 2000, Notification.Position.BOTTOM_CENTER)
+                            .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                }
+        );
+    }
+
+    private void executeValidatedOperation(final String dialogTitle,
+            final Supplier<TreeOperationValidationResult> validationSupplier,
+            final Runnable confirmedAction) {
+        TreeOperationValidationResult validationResult = validationSupplier.get();
+        if (!validationResult.allowed()) {
+            showValidationErrorDialog(validationResult.message());
+            return;
+        }
+
+        ConfirmDialog confirmDialog = new ConfirmDialog();
+        confirmDialog.setHeader(dialogTitle);
+        confirmDialog.setText(validationResult.message());
+        confirmDialog.setCancelable(true);
+        confirmDialog.setCancelText("Annulla");
+        confirmDialog.setConfirmText("OK, prosegui");
+        confirmDialog.addConfirmListener(event -> confirmedAction.run());
+        confirmDialog.open();
+    }
+
+    private void showValidationErrorDialog(final String message) {
+        ConfirmDialog errorDialog = new ConfirmDialog();
+        errorDialog.setHeader("Operazione non consentita");
+        Span errorText = new Span(message);
+        errorText.getStyle().set("color", "var(--lumo-error-text-color)");
+        errorDialog.setText(errorText);
+        errorDialog.setConfirmText("Chiudi");
+        errorDialog.setConfirmButtonTheme("error primary");
+        errorDialog.open();
+    }
+
+    private TreeNodeMovePosition mapMovePosition(final GridDropLocation dropLocation,
+            final TreeResponse targetItem) {
+        if (targetItem == null) {
+            return TreeNodeMovePosition.ROOT;
+        }
+        if (dropLocation == GridDropLocation.ON_TOP) {
+            return TreeNodeMovePosition.CHILD_OF_TARGET;
+        }
+        if (dropLocation == GridDropLocation.ABOVE) {
+            return TreeNodeMovePosition.BEFORE_TARGET;
+        }
+        return TreeNodeMovePosition.AFTER_TARGET;
+    }
+
+    private void applyMove(final TreeResponse item, final TreeResponse targetItem,
+            final GridDropLocation dropLocation) {
         removeItemFromTree(item);
+
+        if (targetItem == null) {
+            rootItems.add(item);
+        } else if (dropLocation == GridDropLocation.ON_TOP) {
+            targetItem.getChildren().add(item);
+            tree.expand(targetItem);
+        } else if (dropLocation == GridDropLocation.ABOVE) {
+            insertBefore(targetItem, item);
+        } else if (dropLocation == GridDropLocation.BELOW) {
+            insertAfter(targetItem, item);
+        }
+
         refreshTree();
-        Notification.show("Elemento eliminato", 2000, Notification.Position.BOTTOM_CENTER);
+    }
+
+    private boolean isDescendantOf(final TreeResponse parent, final TreeResponse possibleDescendant) {
+        for (TreeResponse child : parent.getChildren()) {
+            if (child.equals(possibleDescendant) || isDescendantOf(child, possibleDescendant)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private boolean codeExists(Integer code) {
