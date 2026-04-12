@@ -2,6 +2,7 @@ package io.bootify.my_app.config;
 
 import io.bootify.my_app.domain.Product;
 import io.bootify.my_app.repos.ProductRepository;
+import io.bootify.my_app.service.TreeStructureOperationService;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -14,8 +15,11 @@ import java.util.List;
 public class DataInitializer {
 
     @Bean
-    public CommandLineRunner initDatabase(ProductRepository productRepository) {
+    public CommandLineRunner initDatabase(ProductRepository productRepository,
+            TreeStructureOperationService treeStructureOperationService) {
         return args -> {
+            treeStructureOperationService.seedDefaultDataIfEmpty();
+
             // Check if data already exists
             if (productRepository.count() > 0) {
                 return;

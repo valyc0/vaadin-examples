@@ -35,7 +35,9 @@ import io.bootify.my_app.service.TreeStructureValidationService;
 import io.bootify.my_app.service.TreeStructureValidationService.TreeOperationValidationResult;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Supplier;
 
 @Route(value = "tree-structure", layout = MainLayout.class)
@@ -68,8 +70,9 @@ public class TreeStructureManagementView extends VerticalLayout {
         buildTreeGrid();
         add(tree);
 
-        // Inizializza con struttura di default
-        initializeDefaultStructure();
+        // Carica struttura da DB
+        reloadTreeFromServer();
+        tree.expandRecursively(rootItems, 2);
     }
 
     private HorizontalLayout createToolbar() {
@@ -84,8 +87,8 @@ public class TreeStructureManagementView extends VerticalLayout {
         Button clearButton = new Button("Pulisci Tutto", new Icon(VaadinIcon.TRASH));
         clearButton.addThemeVariants(ButtonVariant.LUMO_ERROR);
         clearButton.addClickListener(e -> {
-            rootItems.clear();
-            refreshTree();
+            treeOperationService.clearAll();
+            reloadTreeFromServer();
             Notification.show("Struttura pulita", 2000, Notification.Position.BOTTOM_CENTER);
         });
 
@@ -167,75 +170,6 @@ public class TreeStructureManagementView extends VerticalLayout {
         });
     }
 
-    private void removeItemFromTree(TreeResponse item) {
-        // Rimuovi dalle root
-        if (!rootItems.remove(item)) {
-            // Rimuovi dai figli
-            removeFromChildren(rootItems, item);
-        }
-    }
-
-    private boolean removeFromChildren(List<TreeResponse> items, TreeResponse toRemove) {
-        for (TreeResponse parent : items) {
-            if (parent.getChildren().remove(toRemove)) {
-                return true;
-            }
-            if (removeFromChildren(parent.getChildren(), toRemove)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private void insertBefore(TreeResponse target, TreeResponse toInsert) {
-        // Cerca nelle root
-        int index = rootItems.indexOf(target);
-        if (index != -1) {
-            rootItems.add(index, toInsert);
-            return;
-        }
-        // Cerca nei figli
-        insertBeforeInChildren(rootItems, target, toInsert);
-    }
-
-    private boolean insertBeforeInChildren(List<TreeResponse> items, TreeResponse target, TreeResponse toInsert) {
-        for (TreeResponse parent : items) {
-            int index = parent.getChildren().indexOf(target);
-            if (index != -1) {
-                parent.getChildren().add(index, toInsert);
-                return true;
-            }
-            if (insertBeforeInChildren(parent.getChildren(), target, toInsert)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private void insertAfter(TreeResponse target, TreeResponse toInsert) {
-        // Cerca nelle root
-        int index = rootItems.indexOf(target);
-        if (index != -1) {
-            rootItems.add(index + 1, toInsert);
-            return;
-        }
-        // Cerca nei figli
-        insertAfterInChildren(rootItems, target, toInsert);
-    }
-
-    private boolean insertAfterInChildren(List<TreeResponse> items, TreeResponse target, TreeResponse toInsert) {
-        for (TreeResponse parent : items) {
-            int index = parent.getChildren().indexOf(target);
-            if (index != -1) {
-                parent.getChildren().add(index + 1, toInsert);
-                return true;
-            }
-            if (insertAfterInChildren(parent.getChildren(), target, toInsert)) {
-                return true;
-            }
-        }
-        return false;
-    }
 
     private int findMaxCode(List<TreeResponse> items) {
         int max = 0;
@@ -374,8 +308,7 @@ public class TreeStructureManagementView extends VerticalLayout {
             () -> treeValidationService.verifyCreate(request),
                 () -> {
                     treeOperationService.createNode(request);
-                    rootItems.add(newItem);
-                    refreshTree();
+                    reloadTreeFromServer();
                     sourceDialog.close();
                     Notification.show("Elemento aggiunto. Trascinalo per riorganizzare la struttura.",
                                     3000, Notification.Position.BOTTOM_CENTER)
@@ -398,7 +331,7 @@ public class TreeStructureManagementView extends VerticalLayout {
             () -> treeValidationService.verifyMove(request),
                 () -> {
                     treeOperationService.moveNode(request);
-                    applyMove(item, targetItem, dropLocation);
+                    reloadTreeFromServer();
                     Notification.show("Spostamento completato", 2000, Notification.Position.BOTTOM_CENTER)
                             .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 }
@@ -413,8 +346,7 @@ public class TreeStructureManagementView extends VerticalLayout {
             () -> treeValidationService.verifyDelete(request),
                 () -> {
                     treeOperationService.deleteNode(request);
-                    removeItemFromTree(item);
-                    refreshTree();
+                    reloadTreeFromServer();
                     Notification.show("Elemento eliminato", 2000, Notification.Position.BOTTOM_CENTER)
                             .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 }
@@ -430,8 +362,7 @@ public class TreeStructureManagementView extends VerticalLayout {
                 () -> treeValidationService.verifyRename(request),
                 () -> {
                     treeOperationService.renameNode(request);
-                    item.setDescrizione(newDescription);
-                    refreshTree();
+                    reloadTreeFromServer();
                     sourceDialog.close();
                     Notification.show("Nome elemento aggiornato", 2000, Notification.Position.BOTTOM_CENTER)
                             .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
@@ -481,24 +412,6 @@ public class TreeStructureManagementView extends VerticalLayout {
             return TreeNodeMovePosition.BEFORE_TARGET;
         }
         return TreeNodeMovePosition.AFTER_TARGET;
-    }
-
-    private void applyMove(final TreeResponse item, final TreeResponse targetItem,
-            final GridDropLocation dropLocation) {
-        removeItemFromTree(item);
-
-        if (targetItem == null) {
-            rootItems.add(item);
-        } else if (dropLocation == GridDropLocation.ON_TOP) {
-            targetItem.getChildren().add(item);
-            tree.expand(targetItem);
-        } else if (dropLocation == GridDropLocation.ABOVE) {
-            insertBefore(targetItem, item);
-        } else if (dropLocation == GridDropLocation.BELOW) {
-            insertAfter(targetItem, item);
-        }
-
-        refreshTree();
     }
 
     private boolean isDescendantOf(final TreeResponse parent, final TreeResponse possibleDescendant) {
@@ -575,6 +488,41 @@ public class TreeStructureManagementView extends VerticalLayout {
         }
     }
 
+    private void reloadTreeFromServer() {
+        Set<Integer> expandedCodes = new HashSet<>();
+        collectExpandedCodes(rootItems, expandedCodes);
+
+        List<TreeResponse> freshData = treeOperationService.loadTree();
+        rootItems.clear();
+        rootItems.addAll(freshData);
+        refreshTree();
+
+        List<TreeResponse> toExpand = new ArrayList<>();
+        collectByCode(rootItems, expandedCodes, toExpand);
+        if (!toExpand.isEmpty()) {
+            tree.expand(toExpand);
+        }
+    }
+
+    private void collectExpandedCodes(final List<TreeResponse> items, final Set<Integer> codes) {
+        for (TreeResponse item : items) {
+            if (tree.isExpanded(item)) {
+                codes.add(item.getCode());
+            }
+            collectExpandedCodes(item.getChildren(), codes);
+        }
+    }
+
+    private void collectByCode(final List<TreeResponse> items, final Set<Integer> codes,
+            final List<TreeResponse> result) {
+        for (TreeResponse item : items) {
+            if (codes.contains(item.getCode())) {
+                result.add(item);
+            }
+            collectByCode(item.getChildren(), codes, result);
+        }
+    }
+
     private void refreshTree() {
         tree.setItems(rootItems, TreeResponse::getChildren);
     }
@@ -595,41 +543,4 @@ public class TreeStructureManagementView extends VerticalLayout {
         }
     }
 
-    private void initializeDefaultStructure() {
-        // Complesso 1: Sicurezza Nazionale
-        TreeResponse comp1 = new TreeResponse(10, "Complesso", "Sicurezza Nazionale");
-        TreeResponse area1 = new TreeResponse(11, "Area", "Intelligence");
-        TreeResponse tr1 = new TreeResponse(111, "Trattazione", "Analisi Strategica");
-        TreeResponse tr2 = new TreeResponse(112, "Trattazione", "Controspionaggio");
-        area1.getChildren().add(tr1);
-        area1.getChildren().add(tr2);
-        
-        TreeResponse area2 = new TreeResponse(12, "Area", "Difesa");
-        TreeResponse tr3 = new TreeResponse(121, "Trattazione", "Operazioni Militari");
-        area2.getChildren().add(tr3);
-        
-        comp1.getChildren().add(area1);
-        comp1.getChildren().add(area2);
-
-        // Complesso 2: Innovazione Tecnologica
-        TreeResponse comp2 = new TreeResponse(20, "Complesso", "Innovazione Tecnologica");
-        TreeResponse area3 = new TreeResponse(21, "Area", "Cybersecurity");
-        TreeResponse tr4 = new TreeResponse(211, "Trattazione", "Minacce Informatiche");
-        TreeResponse tr5 = new TreeResponse(212, "Trattazione", "Sicurezza delle Reti");
-        area3.getChildren().add(tr4);
-        area3.getChildren().add(tr5);
-        
-        TreeResponse area4 = new TreeResponse(22, "Area", "Intelligenza Artificiale");
-        TreeResponse tr6 = new TreeResponse(221, "Trattazione", "Machine Learning");
-        area4.getChildren().add(tr6);
-        
-        comp2.getChildren().add(area3);
-        comp2.getChildren().add(area4);
-
-        rootItems.add(comp1);
-        rootItems.add(comp2);
-
-        refreshTree();
-        tree.expandRecursively(rootItems, 2);
-    }
 }
