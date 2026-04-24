@@ -1,1 +1,28 @@
 /* Global application styles */
+
+/* ===== Gestione Struttura Albero ===== */
+
+/* Contenitore con angoli tondi e ombreggiatura */
+.tree-card {
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.08),
+    0 6px 24px rgba(0, 0, 0, 0.07);
+  border: 1px solid var(--lumo-contrast-10pct);
+}
+
+/* Font compatto */
+.styled-tree {
+  font-size: var(--lumo-font-size-s);
+}
+
+/* Animazione freccia espansione nodi */
+.styled-tree vaadin-grid-tree-toggle::part(toggle) {
+  transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Transizione colore riga hover più morbida */
+.styled-tree::part(row):hover {
+  transition: background-color 0.18s ease;
+}

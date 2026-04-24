@@ -8,8 +8,10 @@ import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.confirmdialog.ConfirmDialog;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.formlayout.FormLayout;
+import com.vaadin.flow.component.grid.GridVariant;
 import com.vaadin.flow.component.grid.dnd.GridDropLocation;
 import com.vaadin.flow.component.grid.dnd.GridDropMode;
+import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.Pre;
 import com.vaadin.flow.component.html.Span;
@@ -68,7 +70,10 @@ public class TreeStructureManagementView extends VerticalLayout {
 
         // TreeGrid per visualizzare e riordinare la struttura
         buildTreeGrid();
-        add(tree);
+        Div treeWrapper = new Div(tree);
+        treeWrapper.addClassName("tree-card");
+        treeWrapper.setWidthFull();
+        add(treeWrapper);
 
         // Carica struttura da DB
         reloadTreeFromServer();
@@ -105,17 +110,12 @@ public class TreeStructureManagementView extends VerticalLayout {
     }
 
     private void buildTreeGrid() {
+        tree.addThemeVariants(GridVariant.LUMO_COMPACT, GridVariant.LUMO_ROW_STRIPES, GridVariant.LUMO_NO_BORDER);
+        tree.addClassName("styled-tree");
+
         tree.addHierarchyColumn(TreeResponse::getDescrizione)
                 .setHeader("Elemento (Trascina per riordinare)")
                 .setFlexGrow(3);
-        
-        tree.addColumn(TreeResponse::getCode)
-                .setHeader("Codice")
-                .setWidth("120px");
-        
-        tree.addColumn(TreeResponse::getType)
-                .setHeader("Tipo")
-                .setWidth("120px");
 
         tree.addComponentColumn(item -> {
             Button editBtn = new Button(new Icon(VaadinIcon.EDIT));
@@ -129,11 +129,11 @@ public class TreeStructureManagementView extends VerticalLayout {
             HorizontalLayout actions = new HorizontalLayout(editBtn, deleteBtn);
             actions.setSpacing(false);
             return actions;
-        }).setHeader("Azioni").setWidth("140px").setFlexGrow(0);
+        }).setHeader("Azioni").setWidth("100px").setFlexGrow(0);
 
         tree.setItems(rootItems, TreeResponse::getChildren);
         tree.setWidthFull();
-        tree.setHeight("500px");
+        tree.setHeight("420px");
 
         // Abilita drag and drop
         setupDragAndDrop();
