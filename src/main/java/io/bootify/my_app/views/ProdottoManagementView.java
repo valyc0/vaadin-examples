@@ -1,6 +1,9 @@
 package io.bootify.my_app.views;
 
+import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.Component;
+import com.vaadin.flow.component.DetachEvent;
+import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.confirmdialog.ConfirmDialog;
@@ -22,12 +25,15 @@ import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import io.bootify.my_app.domain.Product;
+import io.bootify.my_app.service.PriceFileWatcherService;
 import io.bootify.my_app.service.ProductService;
 import io.bootify.my_app.service.ProductFileUploadService;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import java.math.BigDecimal;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.function.Consumer;
 
 @Route(value = "prodotti", layout = MainLayout.class)
 @PageTitle("Gestione Prodotti")
@@ -35,16 +41,22 @@ public class ProdottoManagementView extends VerticalLayout {
 
     private final ProductService productService;
     private final ProductFileUploadService uploadService;
+    private final PriceFileWatcherService priceFileWatcherService;
     private final Grid<Product> grid;
     private final TextField searchField;
     private final Span statsLabel;
+    private final Span livePriceValueSpan;
+    private Consumer<BigDecimal> priceListener;
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
     @Autowired
-    public ProdottoManagementView(ProductService productService, ProductFileUploadService uploadService) {
+    public ProdottoManagementView(ProductService productService,
+                                  ProductFileUploadService uploadService,
+                                  PriceFileWatcherService priceFileWatcherService) {
         this.productService = productService;
         this.uploadService = uploadService;
+        this.priceFileWatcherService = priceFileWatcherService;
 
         setSizeFull();
         setPadding(true);
@@ -60,6 +72,55 @@ public class ProdottoManagementView extends VerticalLayout {
         statsLabel.getStyle()
                 .set("color", "var(--lumo-secondary-text-color)")
                 .set("font-size", "var(--lumo-font-size-s)");
+
+        // --- Pannello prezzo live iPhone 14 Pro (Push) ---
+        livePriceValueSpan = new Span("—");
+        livePriceValueSpan.getStyle()
+                .set("font-size", "var(--lumo-font-size-xxl)")
+                .set("font-weight", "bold")
+                .set("color", "var(--lumo-primary-color)");
+
+        Span liveBadge = new Span("● LIVE");
+        liveBadge.getStyle()
+                .set("background-color", "#e53e3e")
+                .set("color", "white")
+                .set("font-size", "var(--lumo-font-size-xxs)")
+                .set("font-weight", "bold")
+                .set("padding", "2px 7px")
+                .set("border-radius", "12px")
+                .set("letter-spacing", "1px");
+
+        Span iphoneLabel = new Span("iPhone 14 Pro – prezzo da file");
+        iphoneLabel.getStyle()
+                .set("font-weight", "600")
+                .set("font-size", "var(--lumo-font-size-s)");
+
+        Span iphoneIcon = new Span("📱");
+        iphoneIcon.getStyle().set("font-size", "var(--lumo-font-size-l)");
+
+        HorizontalLayout livePriceLabelRow = new HorizontalLayout(iphoneIcon, iphoneLabel, liveBadge);
+        livePriceLabelRow.setAlignItems(FlexComponent.Alignment.CENTER);
+        livePriceLabelRow.setSpacing(true);
+
+        Span fileHint = new Span("Modifica data/iphone14pro_price.txt per aggiornare in tempo reale");
+        fileHint.getStyle()
+                .set("font-size", "var(--lumo-font-size-xs)")
+                .set("color", "var(--lumo-secondary-text-color)");
+
+        VerticalLayout livePriceInfo = new VerticalLayout(livePriceLabelRow, fileHint);
+        livePriceInfo.setPadding(false);
+        livePriceInfo.setSpacing(false);
+
+        HorizontalLayout livePricePanel = new HorizontalLayout(livePriceInfo, livePriceValueSpan);
+        livePricePanel.setAlignItems(FlexComponent.Alignment.CENTER);
+        livePricePanel.setJustifyContentMode(FlexComponent.JustifyContentMode.BETWEEN);
+        livePricePanel.setWidthFull();
+        livePricePanel.getStyle()
+                .set("padding", "var(--lumo-space-m) var(--lumo-space-l)")
+                .set("background", "var(--lumo-contrast-5pct)")
+                .set("border-radius", "var(--lumo-border-radius-m)")
+                .set("border-left", "4px solid var(--lumo-primary-color)");
+        // -------------------------------------------------
 
         // Search field
         searchField = new TextField();
@@ -91,9 +152,9 @@ public class ProdottoManagementView extends VerticalLayout {
         configureGrid();
 
         // Header layout
-        VerticalLayout headerLayout = new VerticalLayout(title, statsLabel, toolbar);
+        VerticalLayout headerLayout = new VerticalLayout(title, statsLabel, livePricePanel, toolbar);
         headerLayout.setPadding(false);
-        headerLayout.setSpacing(false);
+        headerLayout.setSpacing(true);
 
         // Main content
         add(headerLayout, grid);
@@ -101,6 +162,28 @@ public class ProdottoManagementView extends VerticalLayout {
 
         // Load data
         refreshGrid();
+    }
+
+    @Override
+    protected void onAttach(AttachEvent attachEvent) {
+        super.onAttach(attachEvent);
+        UI ui = attachEvent.getUI();
+        priceListener = price -> ui.access(() ->
+                livePriceValueSpan.setText("\u20ac " + price.toPlainString()));
+        priceFileWatcherService.addListener(priceListener);
+        // Inizializza subito con il valore corrente dal file
+        BigDecimal current = priceFileWatcherService.getCurrentPrice();
+        if (current != null) {
+            livePriceValueSpan.setText("\u20ac " + current.toPlainString());
+        }
+    }
+
+    @Override
+    protected void onDetach(DetachEvent detachEvent) {
+        super.onDetach(detachEvent);
+        if (priceListener != null) {
+            priceFileWatcherService.removeListener(priceListener);
+        }
     }
 
     private void configureGrid() {
