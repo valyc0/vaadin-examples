@@ -1,0 +1,47 @@
+# ============================================================
+# field-help.yml
+# Descrizioni di aiuto per i campi di ogni view.
+#
+# Struttura:
+#   field-help:
+#     views:
+#       <chiave-view>:
+#         <chiave-campo>: "Testo di aiuto mostrato sotto il campo"
+#
+# Per aggiungere una nuova view: aggiungi una sezione sotto "views"
+# con una chiave identificativa (es. gestione-utenti).
+# Per ogni campo inserisci la chiave usata nel codice e il testo.
+# Le modifiche richiedono il riavvio dell'applicazione.
+# ============================================================
+
+field-help:
+  views:
+
+    # ---- Gestione File Avanzata (/enhanced-files) ----
+    enhanced-file-management:
+      tipologia: >
+        Classifica il documento in una categoria (es. Fattura, Contratto, Report, Presentazioni).
+        Usata per filtrare e organizzare i file nell'archivio.
+      status: >
+        Indica lo stato di approvazione del file:
+        PENDING = in attesa di revisione,
+        APPROVED = approvato e valido,
+        REJECTED = rifiutato (non valido),
+        ARCHIVED = archiviato (non più attivo).
+      proprietario: >
+        Persona o ufficio responsabile del documento.
+        Usato per le ricerche e per l'assegnazione delle responsabilità.
+      descrizione: >
+        Testo libero che descrive il contenuto o lo scopo del file.
+        Massimo 500 caratteri.
+
+    # ---- Gestione Prodotti (/prodotti) ----
+    # prodotti:
+    #   categoria: "Categoria merceologica del prodotto (es. Elettronica, Abbigliamento)."
+    #   prezzo: "Prezzo di vendita in euro, IVA esclusa."
+    #   quantita: "Numero di unità disponibili in magazzino."
+
+    # ---- Gestione Utenti (/users) - esempio per future view ----
+    # gestione-utenti:
+    #   ruolo: "Definisce i permessi dell'utente all'interno del sistema."
+    #   email: "Indirizzo email usato per login e notifiche."

@@ -31,6 +31,7 @@ import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.StreamResource;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import io.bootify.my_app.domain.FileUpload;
+import io.bootify.my_app.service.FieldHelpService;
 import io.bootify.my_app.service.FileUploadService;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -46,7 +47,10 @@ import java.util.stream.Collectors;
 @PageTitle("Gestione File Avanzata")
 public class EnhancedFileManagementView extends VerticalLayout {
 
+    private static final String VIEW_KEY = "enhanced-file-management";
+
     private final FileUploadService fileUploadService;
+    private final FieldHelpService fieldHelpService;
     private final Grid<FileUpload> grid;
     
     // Search filters
@@ -76,8 +80,10 @@ public class EnhancedFileManagementView extends VerticalLayout {
     );
 
     @Autowired
-    public EnhancedFileManagementView(FileUploadService fileUploadService) {
+    public EnhancedFileManagementView(FileUploadService fileUploadService,
+                                      FieldHelpService fieldHelpService) {
         this.fileUploadService = fileUploadService;
+        this.fieldHelpService = fieldHelpService;
 
         // Configure the main layout
         setWidthFull();
@@ -163,8 +169,8 @@ public class EnhancedFileManagementView extends VerticalLayout {
         uploadDescriptionArea.setPlaceholder("Descrizione opzionale del file...");
         uploadDescriptionArea.setMaxLength(500);
 
-        formLayout.add(uploadOwnerField, 2);
-        formLayout.add(uploadDescriptionArea, 2);
+        formLayout.add(fieldHelpService.wrapWithHelp(uploadOwnerField, VIEW_KEY, "proprietario"), 2);
+        formLayout.add(fieldHelpService.wrapWithHelp(uploadDescriptionArea, VIEW_KEY, "descrizione"), 2);
 
         // File upload component
         buffer = new MemoryBuffer();
@@ -293,7 +299,7 @@ public class EnhancedFileManagementView extends VerticalLayout {
             }
         });
 
-        section.add(uploadTitle, uploadCategoryCombo, uploadFormContainer);
+        section.add(uploadTitle, fieldHelpService.wrapWithHelp(uploadCategoryCombo, VIEW_KEY, "tipologia"), uploadFormContainer);
         return section;
     }
 
@@ -355,7 +361,10 @@ public class EnhancedFileManagementView extends VerticalLayout {
 
         // Layout - more compact
         HorizontalLayout filterRow = new HorizontalLayout(
-            searchField, categoryFilter, statusFilter, ownerFilter
+            searchField,
+            fieldHelpService.wrapWithHelp(categoryFilter, VIEW_KEY, "tipologia"),
+            fieldHelpService.wrapWithHelp(statusFilter, VIEW_KEY, "status"),
+            fieldHelpService.wrapWithHelp(ownerFilter, VIEW_KEY, "proprietario")
         );
         filterRow.setWidthFull();
         filterRow.setDefaultVerticalComponentAlignment(FlexComponent.Alignment.END);
@@ -568,8 +577,11 @@ public class EnhancedFileManagementView extends VerticalLayout {
         descriptionArea.setValue(file.getDescription() != null ? file.getDescription() : "");
         descriptionArea.setWidthFull();
 
-        formLayout.add(fileNameField, categoryCombo, statusCombo, ownerField);
-        formLayout.add(descriptionArea, 2);
+        formLayout.add(fileNameField,
+            fieldHelpService.wrapWithHelp(categoryCombo, VIEW_KEY, "tipologia"),
+            fieldHelpService.wrapWithHelp(statusCombo, VIEW_KEY, "status"),
+            fieldHelpService.wrapWithHelp(ownerField, VIEW_KEY, "proprietario"));
+        formLayout.add(fieldHelpService.wrapWithHelp(descriptionArea, VIEW_KEY, "descrizione"), 2);
 
         Button saveButton = new Button("Salva", e -> {
             file.setFileName(fileNameField.getValue());

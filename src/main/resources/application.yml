@@ -1,4 +1,6 @@
 spring:
+  config:
+    import: optional:classpath:field-help.yml
   datasource:
     url: ${JDBC_DATABASE_URL:jdbc:h2:mem:my-app}
     username: ${JDBC_DATABASE_USERNAME:sa}
