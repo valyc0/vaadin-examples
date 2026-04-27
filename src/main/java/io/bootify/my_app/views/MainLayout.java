@@ -49,6 +49,7 @@ public class MainLayout extends AppLayout {
                 createNavItem("Dettaglio File", FileDetailView.class, VaadinIcon.FILE_TEXT_O),
                 createNavItem("Generic Grid", GenericGridView.class, VaadinIcon.TABLE),
                 createNavItem("Gestione Contenuti", ContentManagementView.class, VaadinIcon.EDIT),
+                createNavItem("Stepper Demo", StepperDemoView.class, VaadinIcon.ROAD_BRANCH),
                 createNavItem("Ricerca Documenti", SearchView.class, VaadinIcon.SEARCH),
                 createNavItem("Gestione Struttura", TreeStructureManagementView.class, VaadinIcon.TREE_TABLE),
                 createNavItem("AI Chatbot", ChatbotView.class, VaadinIcon.COMMENT_ELLIPSIS),

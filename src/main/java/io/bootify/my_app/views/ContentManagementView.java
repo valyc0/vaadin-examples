@@ -9,6 +9,7 @@ import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.confirmdialog.ConfirmDialog;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.formlayout.FormLayout;
+import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Image;
 import com.vaadin.flow.component.html.H3;
@@ -462,6 +463,10 @@ public class ContentManagementView extends VerticalLayout {
     }
     
     private Component buildRowDetail(Content content) {
+        // --- Stepper orizzontale (larghezza piena, in cima) ---
+        Div stepperWrapper = buildContentStepper(content);
+        stepperWrapper.getStyle().set("padding", "var(--lumo-space-m) var(--lumo-space-m) 0");
+
         // --- Sezione anteprima ---
         VerticalLayout previewSection = new VerticalLayout();
         previewSection.setPadding(false);
@@ -524,11 +529,155 @@ public class ContentManagementView extends VerticalLayout {
         row.add(previewSection);
         row.setFlexGrow(1, form);
         row.add(form);
-        return row;
+
+        VerticalLayout wrapper = new VerticalLayout();
+        wrapper.setPadding(false);
+        wrapper.setSpacing(false);
+        wrapper.setWidthFull();
+        wrapper.add(stepperWrapper, row);
+        return wrapper;
     }
 
     private Span label(String value) {
         return new Span(value != null && !value.isBlank() ? value : "—");
+    }
+
+    private Div buildContentStepper(Content content) {
+        boolean[] done = {
+            content.getId() != null,
+            content.getFileType() != null && !content.getFileType().isBlank()
+                && content.getCategory() != null && !content.getCategory().isBlank(),
+            content.getDescription() != null && !content.getDescription().isBlank(),
+            content.getTags() != null && !content.getTags().isBlank(),
+            content.getCustomMetadata() != null && !content.getCustomMetadata().isBlank()
+                && !content.getCustomMetadata().equals("{}")
+        };
+        String[] titles    = {"Caricato",   "Classificato",  "Descritto",    "Tags aggiunti", "Metadati custom"};
+        String[] subtitles = {"Nel sistema","Tipo e categoria","Descrizione","Tag ricerca",   "Metadati custom"};
+
+        int currentStep = done.length;
+        for (int i = 0; i < done.length; i++) {
+            if (!done[i]) { currentStep = i; break; }
+        }
+
+        // Riga superiore: cerchi + linee orizzontali
+        Div topRow = new Div();
+        topRow.getStyle()
+                .set("display", "flex")
+                .set("flex-direction", "row")
+                .set("align-items", "center")
+                .set("width", "100%");
+
+        // Riga inferiore: etichette centrate sotto ogni cerchio
+        Div bottomRow = new Div();
+        bottomRow.getStyle()
+                .set("display", "flex")
+                .set("flex-direction", "row")
+                .set("align-items", "flex-start")
+                .set("width", "100%")
+                .set("margin-top", "6px");
+
+        for (int i = 0; i < titles.length; i++) {
+            boolean isDone    = done[i];
+            boolean isCurrent = (i == currentStep);
+            boolean isLast    = (i == titles.length - 1);
+
+            // Cerchio
+            Div circle = new Div();
+            circle.getStyle()
+                    .set("width", "28px")
+                    .set("height", "28px")
+                    .set("border-radius", "50%")
+                    .set("display", "flex")
+                    .set("align-items", "center")
+                    .set("justify-content", "center")
+                    .set("flex-shrink", "0");
+
+            if (isDone) {
+                circle.getStyle()
+                        .set("background-color", "var(--lumo-success-color)")
+                        .set("color", "white");
+                Icon checkIcon = VaadinIcon.CHECK.create();
+                checkIcon.setSize("13px");
+                circle.add(checkIcon);
+            } else if (isCurrent) {
+                circle.getStyle()
+                        .set("background-color", "var(--lumo-primary-color)")
+                        .set("color", "white");
+                Span num = new Span(String.valueOf(i + 1));
+                num.getStyle().set("font-size", "12px").set("font-weight", "700");
+                circle.add(num);
+            } else {
+                circle.getStyle()
+                        .set("background-color", "var(--lumo-contrast-10pct)")
+                        .set("color", "var(--lumo-secondary-text-color)")
+                        .set("border", "1px solid var(--lumo-contrast-20pct)");
+                Span num = new Span(String.valueOf(i + 1));
+                num.getStyle().set("font-size", "12px");
+                circle.add(num);
+            }
+
+            // Cella step (cerchio centrato)
+            Div stepCell = new Div();
+            stepCell.getStyle()
+                    .set("display", "flex")
+                    .set("flex-direction", "column")
+                    .set("align-items", "center")
+                    .set("flex", isLast ? "0 0 auto" : "1 1 0%");
+
+            if (!isLast) {
+                // Cerchio + linea orizzontale a destra
+                Div circleAndLine = new Div();
+                circleAndLine.getStyle()
+                        .set("display", "flex")
+                        .set("flex-direction", "row")
+                        .set("align-items", "center")
+                        .set("width", "100%");
+                Div line = new Div();
+                line.getStyle()
+                        .set("flex", "1")
+                        .set("height", "2px")
+                        .set("background-color", isDone
+                                ? "var(--lumo-success-color)"
+                                : "var(--lumo-contrast-20pct)");
+                circleAndLine.add(circle, line);
+                stepCell.add(circleAndLine);
+            } else {
+                stepCell.add(circle);
+            }
+            topRow.add(stepCell);
+
+            // Etichetta centrata
+            Div labelCell = new Div();
+            labelCell.getStyle()
+                    .set("flex", isLast ? "0 0 auto" : "1 1 0%")
+                    .set("text-align", "center")
+                    .set("padding-right", isLast ? "0" : "4px");
+
+            Span titleSpan = new Span(titles[i]);
+            titleSpan.getStyle()
+                    .set("display", "block")
+                    .set("font-size", "var(--lumo-font-size-xs)")
+                    .set("font-weight", isDone || isCurrent ? "600" : "400")
+                    .set("color", isDone
+                            ? "var(--lumo-success-text-color)"
+                            : isCurrent
+                                ? "var(--lumo-primary-text-color)"
+                                : "var(--lumo-secondary-text-color)");
+
+            Span subtitleSpan = new Span(subtitles[i]);
+            subtitleSpan.getStyle()
+                    .set("display", "block")
+                    .set("font-size", "10px")
+                    .set("color", "var(--lumo-secondary-text-color)");
+
+            labelCell.add(titleSpan, subtitleSpan);
+            bottomRow.add(labelCell);
+        }
+
+        Div stepper = new Div(topRow, bottomRow);
+        stepper.setWidthFull();
+        return stepper;
     }
 
     private void updateTotalLabel() {
