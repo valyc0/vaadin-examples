@@ -749,7 +749,7 @@ public class GoogleSearchView extends Div {
                 pdfFiles.add(new FileAttachment(query.replace(" ", "_") + "_Best_Practices.docx", "DOCX", "1.8 MB"));
                 pdfFiles.add(new FileAttachment(query.replace(" ", "_") + "_Cheat_Sheet.pdf", "PDF", "850 KB"));
 
-                results.add(new SearchResult(
+                SearchResult pdfResult = new SearchResult(
                         query + " - Documentation and Resources (#" + resultNumber + ")",
                         "https://www.resources.com/" + query.replace(" ", "-"),
                         "Comprehensive collection of documentation, tutorials, and reference materials for " + query + ". Download PDF guides, watch video tutorials, and access code examples. (Risultato " + resultNumber + ")",
@@ -757,7 +757,9 @@ public class GoogleSearchView extends Div {
                         pdfFiles,
                         null,
                         now.minusDays(3)
-                ));
+                );
+                pdfResult.contentId = 1L; // In produzione viene dal RAG
+                results.add(pdfResult);
             } else if (i == 3) {
                 // Video result
                 results.add(new SearchResult(
@@ -1000,7 +1002,81 @@ public class GoogleSearchView extends Div {
             card.add(videoContainer);
         }
 
+        // Se il risultato contiene PDF, mostra anteprima a sinistra fuori dalla card
+        boolean hasPdf = result.files != null && result.files.stream()
+                .anyMatch(f -> "PDF".equalsIgnoreCase(f.type));
+        if (hasPdf) {
+            Div previewPanel = buildPreviewThumbnail(result);
+            previewPanel.getStyle()
+                    .set("position", "absolute")
+                    .set("left", "-150px")
+                    .set("top", "12px");
+
+            Div outerWrapper = new Div();
+            outerWrapper.getStyle().set("position", "relative");
+            outerWrapper.add(previewPanel, card);
+            return outerWrapper;
+        }
+
         return card;
+    }
+
+    private Div buildPreviewThumbnail(SearchResult result) {
+        Div panel = new Div();
+        panel.getStyle()
+                .set("flex-shrink", "0")
+                .set("width", "130px")
+                .set("display", "flex")
+                .set("flex-direction", "column")
+                .set("align-items", "center")
+                .set("gap", "6px");
+
+        if (result.contentId != null) {
+            Image img = new Image("/api/preview/" + result.contentId, "Anteprima");
+            img.getStyle()
+                    .set("width", "130px")
+                    .set("max-height", "184px")
+                    .set("object-fit", "contain")
+                    .set("border", "1px solid var(--lumo-contrast-20pct)")
+                    .set("border-radius", "4px")
+                    .set("background", "#f5f5f5")
+                    .set("display", "block");
+            panel.add(img);
+        } else {
+            Div placeholder = new Div();
+            placeholder.getStyle()
+                    .set("width", "130px")
+                    .set("height", "184px")
+                    .set("border", "1px solid var(--lumo-contrast-20pct)")
+                    .set("border-radius", "4px")
+                    .set("background", "#f5f5f5")
+                    .set("display", "flex")
+                    .set("flex-direction", "column")
+                    .set("align-items", "center")
+                    .set("justify-content", "center")
+                    .set("gap", "8px");
+
+            Icon pdfIcon = FontAwesome.Solid.FILE_PDF.create();
+            pdfIcon.setSize("36px");
+            pdfIcon.getStyle().set("color", "#d32f2f");
+
+            Span pdfLabel = new Span("PDF");
+            pdfLabel.getStyle()
+                    .set("font-size", "12px")
+                    .set("font-weight", "700")
+                    .set("color", "#d32f2f");
+
+            placeholder.add(pdfIcon, pdfLabel);
+            panel.add(placeholder);
+        }
+
+        Span label = new Span("Anteprima");
+        label.getStyle()
+                .set("font-size", "var(--lumo-font-size-xs)")
+                .set("color", "var(--lumo-secondary-text-color)");
+        panel.add(label);
+
+        return panel;
     }
 
     private Icon getFileIcon(String type) {
@@ -1358,6 +1434,7 @@ public class GoogleSearchView extends Div {
         List<FileAttachment> files;
         String videoUrl;
         LocalDate lastUpdated;
+        Long contentId;
 
         SearchResult(String title, String url, String description, String site,
                      List<FileAttachment> files, String videoUrl, LocalDate lastUpdated) {
