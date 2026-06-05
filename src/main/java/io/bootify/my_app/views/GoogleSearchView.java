@@ -5,6 +5,7 @@ import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.dependency.CssImport;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.combobox.MultiSelectComboBox;
 import com.vaadin.flow.component.datepicker.DatePicker;
@@ -1002,6 +1003,18 @@ public class GoogleSearchView extends Div {
             card.add(videoContainer);
         }
 
+        // Dettagli button
+        Button detailButton = new Button("Dettagli", new Icon(VaadinIcon.INFO_CIRCLE));
+        detailButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+        detailButton.getStyle()
+                .set("margin-top", "8px")
+                .set("cursor", "pointer");
+        detailButton.addClickListener(e -> {
+            Dialog dialog = createDetailDialog(result);
+            dialog.open();
+        });
+        card.add(detailButton);
+
         // Se il risultato contiene PDF, mostra anteprima a sinistra fuori dalla card
         boolean hasPdf = result.files != null && result.files.stream()
                 .anyMatch(f -> "PDF".equalsIgnoreCase(f.type));
@@ -1077,6 +1090,329 @@ public class GoogleSearchView extends Div {
         panel.add(label);
 
         return panel;
+    }
+
+    private Dialog createDetailDialog(SearchResult result) {
+        Dialog dialog = new Dialog();
+        dialog.setWidth("920px");
+        dialog.setHeight("720px");
+        dialog.setModal(true);
+        dialog.setResizable(true);
+        dialog.setDraggable(true);
+        dialog.addClassName("google-search-detail-dialog");
+
+        // Header
+        H3 dialogTitle = new H3("Dettaglio documento");
+        dialogTitle.getStyle()
+                .set("margin", "0")
+                .set("font-size", "18px")
+                .set("color", "var(--lumo-primary-color)");
+
+        Span fileTitle = new Span(result.title);
+        fileTitle.getStyle()
+                .set("font-size", "13px")
+                .set("color", "var(--lumo-secondary-text-color)");
+
+        HorizontalLayout headerRow = new HorizontalLayout(dialogTitle, fileTitle);
+        headerRow.setWidthFull();
+        headerRow.setDefaultVerticalComponentAlignment(Alignment.CENTER);
+        headerRow.setPadding(true);
+        headerRow.setSpacing(true);
+        headerRow.expand(fileTitle);
+        headerRow.getStyle()
+                .set("border-bottom", "1px solid var(--lumo-contrast-10pct)")
+                .set("flex-shrink", "0");
+
+        // Main grid: 2x2
+        VerticalLayout body = new VerticalLayout();
+        body.setPadding(true);
+        body.setSpacing(true);
+        body.setSizeFull();
+        body.getStyle().set("overflow", "hidden");
+
+        // --- Top row ---
+        HorizontalLayout topRow = new HorizontalLayout();
+        topRow.setWidthFull();
+        topRow.setHeight("240px");
+        topRow.setSpacing(true);
+        topRow.getStyle().set("flex-shrink", "0");
+
+        // Top-left: Preview (PDF thumbnail o video player)
+        VerticalLayout previewSection = new VerticalLayout();
+        previewSection.setWidth("50%");
+        previewSection.setHeightFull();
+        previewSection.setPadding(false);
+        previewSection.setSpacing(true);
+        H4 previewTitle = new H4(result.videoUrl != null ? "Video" : "Anteprima");
+        previewTitle.getStyle()
+                .set("margin", "0")
+                .set("font-size", "14px")
+                .set("color", "var(--lumo-primary-color)");
+
+        Div previewContent = new Div();
+        previewContent.getStyle()
+                .set("display", "flex")
+                .set("align-items", "center")
+                .set("justify-content", "center")
+                .set("flex", "1")
+                .set("overflow", "hidden");
+
+        if (result.videoUrl != null) {
+            Div videoDiv = new Div();
+            videoDiv.setId("dialog-video-" + result.hashCode());
+            videoDiv.getStyle()
+                    .set("width", "100%")
+                    .set("height", "100%")
+                    .set("background", "#000")
+                    .set("border-radius", "8px")
+                    .set("overflow", "hidden");
+            getUI().ifPresent(ui -> ui.getPage().executeJs(
+                    "const c = $0;" +
+                            "c.innerHTML = '<video controls style=\"width: 100%; height: 100%; object-fit: contain; background: #000;\">" +
+                            "<source src=\"" + result.videoUrl + "\" type=\"video/mp4\">" +
+                            "Your browser does not support the video tag.</video>';",
+                    videoDiv.getElement()
+            ));
+            previewContent.add(videoDiv);
+        } else {
+            Div thumbnail = buildPreviewThumbnail(result);
+            thumbnail.getStyle().set("position", "static");
+            previewContent.add(thumbnail);
+        }
+
+        previewSection.add(previewTitle, previewContent);
+
+        // Top-right: Fake summary
+        VerticalLayout summarySection = new VerticalLayout();
+        summarySection.setWidth("50%");
+        summarySection.setHeightFull();
+        summarySection.setPadding(false);
+        summarySection.setSpacing(true);
+        H4 summaryTitle = new H4("Riassunto");
+        summaryTitle.getStyle()
+                .set("margin", "0")
+                .set("font-size", "14px")
+                .set("color", "var(--lumo-primary-color)");
+
+        Paragraph summary = new Paragraph(
+                "Il documento presenta una panoramica dettagliata sull'argomento \"" + result.title + "\". " +
+                        "Vengono analizzati i principali aspetti normativi, le procedure operative e le " +
+                        "best practice da adottare. Il contenuto è strutturato in sezioni tematiche " +
+                        "che facilitano la consultazione e la comprensione dei materiali trattati. " +
+                        "Particolare attenzione è dedicata agli aggiornamenti recenti e alle " +
+                        "modifiche introdotte dalla normativa vigente."
+        );
+        summary.getStyle()
+                .set("font-size", "13px")
+                .set("line-height", "1.6")
+                .set("color", "var(--lumo-body-text-color)")
+                .set("margin", "0")
+                .set("overflow-y", "auto")
+                .set("flex", "1");
+
+        summarySection.add(summaryTitle, summary);
+
+        topRow.add(previewSection, summarySection);
+
+        // --- Bottom row ---
+        HorizontalLayout bottomRow = new HorizontalLayout();
+        bottomRow.setWidthFull();
+        bottomRow.setSpacing(true);
+        bottomRow.getStyle()
+                .set("min-height", "0");
+
+        // Bottom-left: Chatbot AI
+        VerticalLayout chatbotSection = new VerticalLayout();
+        chatbotSection.setWidth("50%");
+        chatbotSection.setHeightFull();
+        chatbotSection.setPadding(false);
+        chatbotSection.setSpacing(true);
+        chatbotSection.getStyle().set("min-height", "0");
+
+        H4 chatTitle = new H4("AI Chatbot");
+        chatTitle.getStyle()
+                .set("margin", "0")
+                .set("font-size", "14px")
+                .set("color", "var(--lumo-primary-color)");
+
+        Div chatBody = new Div();
+        chatBody.getStyle()
+                .set("display", "flex")
+                .set("flex-direction", "column")
+                .set("flex", "1")
+                .set("overflow", "hidden")
+                .set("border", "1px solid var(--lumo-contrast-10pct)")
+                .set("border-radius", "8px")
+                .set("background", "var(--lumo-contrast-5pct)")
+                .set("width", "100%");
+
+        VerticalLayout chatMessages = new VerticalLayout();
+        chatMessages.setPadding(true);
+        chatMessages.setSpacing(true);
+        chatMessages.getStyle()
+                .set("flex", "1")
+                .set("overflow-y", "auto")
+                .set("background-color", "var(--lumo-contrast-5pct)")
+                .set("min-height", "0");
+
+        // Welcome message in dialog chatbot
+        Div welcomeMsg = createMessageBubble("Ciao! Chiedimi qualcosa su questo documento.", false);
+        chatMessages.add(welcomeMsg);
+
+        TextField chatInput = new TextField();
+        chatInput.setPlaceholder("Chiedi all'AI...");
+        chatInput.setWidthFull();
+
+        Button chatSendBtn = new Button(new Icon(VaadinIcon.PAPERPLANE));
+        chatSendBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_SMALL);
+        chatSendBtn.getStyle().set("cursor", "pointer");
+
+        HorizontalLayout chatInputRow = new HorizontalLayout(chatInput, chatSendBtn);
+        chatInputRow.setWidthFull();
+        chatInputRow.setSpacing(true);
+        chatInputRow.setPadding(true);
+        chatInputRow.setDefaultVerticalComponentAlignment(Alignment.CENTER);
+        chatInputRow.expand(chatInput);
+        chatInputRow.getStyle()
+                .set("background-color", "var(--lumo-base-color)")
+                .set("border-top", "1px solid var(--lumo-contrast-10pct)")
+                .set("flex-shrink", "0");
+
+        Runnable sendDialogMessage = () -> {
+            String msg = chatInput.getValue().trim();
+            if (msg.isEmpty()) return;
+            chatInput.clear();
+
+            Div userBubble = createMessageBubble(msg, true);
+            chatMessages.add(userBubble);
+            chatMessages.getElement().executeJs("this.scrollTop = this.scrollHeight");
+
+            Div typing = createTypingIndicator();
+            chatMessages.add(typing);
+
+            new Thread(() -> {
+                try { Thread.sleep(1500); } catch (InterruptedException ex) { Thread.currentThread().interrupt(); }
+                getUI().ifPresent(ui -> ui.access(() -> {
+                    chatMessages.remove(typing);
+                    Div botResp = createMessageBubble(
+                            "Ho analizzato il documento \"" + result.title + "\". " +
+                                    "Per \"" + msg + "\", posso dirti che il documento contiene informazioni " +
+                                    "rilevanti. Consulta la sezione dedicata per maggiori dettagli.",
+                            false
+                    );
+                    chatMessages.add(botResp);
+                    chatMessages.getElement().executeJs("this.scrollTop = this.scrollHeight");
+                }));
+            }).start();
+        };
+
+        chatSendBtn.addClickListener(e -> sendDialogMessage.run());
+        chatInput.addKeyPressListener(event -> {
+            if (event.getKey().getKeys().contains("Enter")) {
+                sendDialogMessage.run();
+            }
+        });
+
+        chatBody.add(chatMessages, chatInputRow);
+        chatbotSection.add(chatTitle, chatBody);
+
+        // Bottom-right: Metadata + breadcrumb
+        VerticalLayout metadataSection = new VerticalLayout();
+        metadataSection.setWidth("50%");
+        metadataSection.setHeightFull();
+        metadataSection.setPadding(false);
+        metadataSection.setSpacing(true);
+        metadataSection.getStyle().set("min-height", "0");
+
+        H4 metaTitle = new H4("Informazioni File");
+        metaTitle.getStyle()
+                .set("margin", "0")
+                .set("font-size", "14px")
+                .set("color", "var(--lumo-primary-color)");
+
+        VerticalLayout metaList = new VerticalLayout();
+        metaList.setPadding(false);
+        metaList.setSpacing(false);
+        metaList.getStyle()
+                .set("overflow-y", "auto")
+                .set("flex", "1")
+                .set("min-height", "0");
+
+        java.util.function.BiConsumer<String, String> addMetaRow = (label, value) -> {
+            HorizontalLayout row = new HorizontalLayout();
+            row.setWidthFull();
+            row.setPadding(false);
+            row.setSpacing(false);
+            row.getStyle()
+                    .set("padding", "6px 0")
+                    .set("border-bottom", "1px solid var(--lumo-contrast-5pct)");
+
+            Span lbl = new Span(label);
+            lbl.getStyle()
+                    .set("font-size", "12px")
+                    .set("font-weight", "600")
+                    .set("color", "var(--lumo-secondary-text-color)")
+                    .set("min-width", "100px");
+
+            Span val = new Span(value);
+            val.getStyle()
+                    .set("font-size", "12px")
+                    .set("color", "var(--lumo-body-text-color)");
+
+            row.add(lbl, val);
+            metaList.add(row);
+        };
+
+        addMetaRow.accept("Titolo:", result.title.length() > 50 ? result.title.substring(0, 50) + "..." : result.title);
+        addMetaRow.accept("URL:", result.url);
+        addMetaRow.accept("Sito:", result.site);
+        addMetaRow.accept("Ultimo aggiornamento:", result.lastUpdated != null
+                ? result.lastUpdated.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) : "N/D");
+        if (result.files != null) {
+            for (FileAttachment f : result.files) {
+                addMetaRow.accept("File:", f.name + " (" + f.type + ", " + f.size + ")");
+            }
+        }
+
+        // Breadcrumb category tree
+        Div separator = new Div();
+        separator.getStyle()
+                .set("height", "1px")
+                .set("background", "var(--lumo-contrast-10pct)")
+                .set("margin", "8px 0")
+                .set("width", "100%");
+
+        H4 catTitle = new H4("Categoria");
+        catTitle.getStyle()
+                .set("margin", "0")
+                .set("font-size", "14px")
+                .set("color", "var(--lumo-primary-color)");
+
+        Span breadcrumb = new Span();
+        breadcrumb.getElement().setProperty("innerHTML",
+                "<span style=\"color: var(--lumo-primary-color); font-size: 12px;\">Documenti</span>" +
+                        "<span style=\"color: var(--lumo-secondary-text-color); margin: 0 4px;\">›</span>" +
+                        "<span style=\"color: var(--lumo-primary-color); font-size: 12px;\">" + result.site + "</span>" +
+                        "<span style=\"color: var(--lumo-secondary-text-color); margin: 0 4px;\">›</span>" +
+                        "<span style=\"color: var(--lumo-body-text-color); font-size: 12px; font-weight: 500;\">" +
+                        (result.title.length() > 30 ? result.title.substring(0, 30) + "..." : result.title) + "</span>"
+        );
+
+        metadataSection.add(metaTitle, metaList, separator, catTitle, breadcrumb);
+
+        bottomRow.add(chatbotSection, metadataSection);
+
+        body.add(topRow, bottomRow);
+        body.expand(bottomRow);
+
+        VerticalLayout content = new VerticalLayout(headerRow, body);
+        content.setPadding(false);
+        content.setSpacing(false);
+        content.setSizeFull();
+        content.expand(body);
+        dialog.add(content);
+
+        return dialog;
     }
 
     private Icon getFileIcon(String type) {
