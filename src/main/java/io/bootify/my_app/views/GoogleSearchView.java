@@ -1,5 +1,7 @@
 package io.bootify.my_app.views;
 
+import com.vaadin.flow.component.HasComponents;
+import com.vaadin.flow.component.Html;
 import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.dependency.CssImport;
@@ -22,6 +24,8 @@ import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import com.flowingcode.vaadin.addons.fontawesome.FontAwesome;
 import io.bootify.my_app.component.StructuredTree;
+import io.bootify.my_app.service.AiStreamingService;
+import io.bootify.my_app.service.MarkdownRenderer;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -53,6 +57,9 @@ public class GoogleSearchView extends Div {
     private int resultsPerPage = 6;
     private static final String AI_RESPONSE = "Ciao! Sono un assistente virtuale. Posso aiutarti con qualsiasi domanda! 🤖";
 
+    private final AiStreamingService aiStreamingService;
+    private final MarkdownRenderer markdownRenderer;
+
     // Filter state
     private Set<String> selectedFileTypes = new HashSet<>();
     private String selectedDateRange = "Qualsiasi data";
@@ -69,7 +76,9 @@ public class GoogleSearchView extends Div {
     private HorizontalLayout customDateContainer;
     private HorizontalLayout activeFiltersBar;
 
-    public GoogleSearchView() {
+    public GoogleSearchView(AiStreamingService aiStreamingService, MarkdownRenderer markdownRenderer) {
+        this.aiStreamingService = aiStreamingService;
+        this.markdownRenderer = markdownRenderer;
         addClassName("google-search-view");
         setSizeFull();
         getStyle()
@@ -1094,8 +1103,9 @@ public class GoogleSearchView extends Div {
 
     private Dialog createDetailDialog(SearchResult result) {
         Dialog dialog = new Dialog();
-        dialog.setWidth("920px");
-        dialog.setHeight("720px");
+        dialog.setWidth("1300px");
+        dialog.setHeight("88vh");
+        dialog.setMaxWidth("96vw");
         dialog.setModal(true);
         dialog.setResizable(true);
         dialog.setDraggable(true);
@@ -1289,21 +1299,36 @@ public class GoogleSearchView extends Div {
 
             Div typing = createTypingIndicator();
             chatMessages.add(typing);
+            chatMessages.getElement().executeJs("this.scrollTop = this.scrollHeight");
 
-            new Thread(() -> {
-                try { Thread.sleep(1500); } catch (InterruptedException ex) { Thread.currentThread().interrupt(); }
-                getUI().ifPresent(ui -> ui.access(() -> {
-                    chatMessages.remove(typing);
-                    Div botResp = createMessageBubble(
-                            "Ho analizzato il documento \"" + result.title + "\". " +
-                                    "Per \"" + msg + "\", posso dirti che il documento contiene informazioni " +
-                                    "rilevanti. Consulta la sezione dedicata per maggiori dettagli.",
-                            false
-                    );
-                    chatMessages.add(botResp);
-                    chatMessages.getElement().executeJs("this.scrollTop = this.scrollHeight");
-                }));
-            }).start();
+            getUI().ifPresent(ui -> {
+                Span[] textHolder = new Span[1];
+                Div[] containerHolder = new Div[1];
+                boolean[] firstToken = {true};
+                StringBuilder accumulated = new StringBuilder();
+
+                aiStreamingService.streamDocumentResponse(result.title, msg)
+                        .subscribe(
+                                token -> ui.access(() -> {
+                                    if (firstToken[0]) {
+                                        firstToken[0] = false;
+                                        chatMessages.remove(typing);
+                                        Div streamBubble = createBotStreamingBubble(textHolder, containerHolder);
+                                        chatMessages.add(streamBubble);
+                                    }
+                                    accumulated.append(token);
+                                    if (textHolder[0] != null) {
+                                        textHolder[0].setText(accumulated.toString());
+                                    }
+                                    chatMessages.getElement().executeJs("this.scrollTop = this.scrollHeight");
+                                }),
+                                error -> ui.access(() -> {
+                                    chatMessages.remove(typing);
+                                    chatMessages.add(createMessageBubble("Errore nella risposta AI. Riprova.", false));
+                                }),
+                                () -> ui.access(() -> renderMarkdownInBubble(containerHolder[0], accumulated.toString(), chatMessages))
+                        );
+            });
         };
 
         chatSendBtn.addClickListener(e -> sendDialogMessage.run());
@@ -1609,24 +1634,38 @@ public class GoogleSearchView extends Div {
             messageInput.clear();
             messageInput.focus();
 
-            // Show typing indicator
             Div typingIndicator = createTypingIndicator();
             chatContainer.add(typingIndicator);
             scrollToBottom();
 
-            // Simulate 2 seconds delay
-            new Thread(() -> {
-                try {
-                    Thread.sleep(2000);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
+            getUI().ifPresent(ui -> {
+                Span[] textHolder = new Span[1];
+                Div[] containerHolder = new Div[1];
+                boolean[] firstToken = {true};
+                StringBuilder accumulated = new StringBuilder();
 
-                getUI().ifPresent(ui -> ui.access(() -> {
-                    chatContainer.remove(typingIndicator);
-                    addBotMessage(AI_RESPONSE);
-                }));
-            }).start();
+                aiStreamingService.streamGenericResponse(message)
+                        .subscribe(
+                                token -> ui.access(() -> {
+                                    if (firstToken[0]) {
+                                        firstToken[0] = false;
+                                        chatContainer.remove(typingIndicator);
+                                        Div streamBubble = createBotStreamingBubble(textHolder, containerHolder);
+                                        chatContainer.add(streamBubble);
+                                    }
+                                    accumulated.append(token);
+                                    if (textHolder[0] != null) {
+                                        textHolder[0].setText(accumulated.toString());
+                                    }
+                                    scrollToBottom();
+                                }),
+                                error -> ui.access(() -> {
+                                    chatContainer.remove(typingIndicator);
+                                    addBotMessage("Errore nella risposta AI. Riprova.");
+                                }),
+                                () -> ui.access(() -> renderMarkdownInBubble(containerHolder[0], accumulated.toString(), chatContainer))
+                        );
+            });
         }
     }
 
@@ -1685,6 +1724,79 @@ public class GoogleSearchView extends Div {
                 .set("justify-content", isUser ? "flex-end" : "flex-start")
                 .set("margin-bottom", "var(--lumo-space-s)");
 
+        return bubble;
+    }
+
+    /**
+     * On stream completion: replaces the raw-text container with rendered Markdown HTML.
+     * Removes the blinking cursor and swaps the content with a styled Html component.
+     */
+    private void renderMarkdownInBubble(Div container, String markdownText, HasComponents scrollTarget) {
+        if (container == null || markdownText.isBlank()) return;
+        container.removeAll();
+        String html = markdownRenderer.render(markdownText);
+        Html mdContent = new Html("<div class=\"ai-md-content\">" + html + "</div>");
+        container.add(mdContent);
+        if (scrollTarget instanceof com.vaadin.flow.component.Component comp) {
+            comp.getElement().executeJs("this.scrollTop = this.scrollHeight");
+        }
+    }
+
+    /**
+     * Creates a bot message bubble with an empty Span for streaming text.
+     * textHolder[0]      → the live Span to append tokens to during streaming
+     * containerHolder[0] → the inner Div to replace with rendered Markdown on completion
+     */
+    private Div createBotStreamingBubble(Span[] textHolder, Div[] containerHolder) {
+        Span textSpan = new Span();
+        textSpan.getStyle()
+                .set("margin", "0")
+                .set("white-space", "pre-wrap")
+                .set("word-wrap", "break-word");
+
+        Span cursor = new Span("▋");
+        cursor.getStyle()
+                .set("animation", "blink 1s step-end infinite")
+                .set("color", "var(--lumo-primary-color)");
+
+        getUI().ifPresent(ui -> ui.getPage().executeJs(
+                "if (!document.getElementById('blink-animation')) {" +
+                "  const s = document.createElement('style');" +
+                "  s.id = 'blink-animation';" +
+                "  s.innerHTML = '@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }';" +
+                "  document.head.appendChild(s);" +
+                "}"
+        ));
+
+        Div textContainer = new Div(textSpan, cursor);
+        textContainer.getStyle()
+                .set("padding", "var(--lumo-space-s)")
+                .set("display", "inline");
+
+        Div container = new Div(textContainer);
+        container.getStyle()
+                .set("max-width", "70%")
+                .set("padding", "var(--lumo-space-m)")
+                .set("border-radius", "var(--lumo-border-radius-m)")
+                .set("background-color", "var(--lumo-contrast-10pct)")
+                .set("color", "var(--lumo-body-text-color)");
+
+        Icon icon = new Icon(VaadinIcon.AUTOMATION);
+        icon.setSize("20px");
+        icon.getStyle().set("margin-right", "var(--lumo-space-s)");
+
+        HorizontalLayout messageWithIcon = new HorizontalLayout(icon, container);
+        messageWithIcon.setDefaultVerticalComponentAlignment(FlexComponent.Alignment.START);
+        messageWithIcon.setSpacing(false);
+
+        Div bubble = new Div(messageWithIcon);
+        bubble.getStyle()
+                .set("display", "flex")
+                .set("justify-content", "flex-start")
+                .set("margin-bottom", "var(--lumo-space-s)");
+
+        textHolder[0] = textSpan;
+        containerHolder[0] = container;
         return bubble;
     }
 

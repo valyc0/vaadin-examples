@@ -533,3 +533,82 @@ vaadin-button.google-search-chat-fab::part(button) {
         min-height: 52px;
     }
 }
+
+/* ── AI Chat: Markdown rendered content ── */
+.ai-md-content {
+    font-size: var(--lumo-font-size-s);
+    line-height: 1.6;
+    color: var(--lumo-body-text-color);
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+.ai-md-content p {
+    margin: 0 0 var(--lumo-space-s) 0;
+}
+
+.ai-md-content p:last-child {
+    margin-bottom: 0;
+}
+
+.ai-md-content strong {
+    font-weight: 600;
+    color: var(--lumo-primary-text-color);
+}
+
+.ai-md-content em {
+    font-style: italic;
+}
+
+.ai-md-content ul,
+.ai-md-content ol {
+    margin: var(--lumo-space-xs) 0 var(--lumo-space-s) 0;
+    padding-left: var(--lumo-space-l);
+}
+
+.ai-md-content li {
+    margin-bottom: var(--lumo-space-xs);
+}
+
+.ai-md-content blockquote {
+    margin: var(--lumo-space-s) 0;
+    padding: var(--lumo-space-s) var(--lumo-space-m);
+    border-left: 3px solid var(--lumo-primary-color);
+    background-color: var(--lumo-contrast-5pct);
+    border-radius: 0 var(--lumo-border-radius-s) var(--lumo-border-radius-s) 0;
+    color: var(--lumo-secondary-text-color);
+    font-style: italic;
+}
+
+.ai-md-content code {
+    font-family: monospace;
+    font-size: 0.9em;
+    background-color: var(--lumo-contrast-10pct);
+    padding: 1px 4px;
+    border-radius: var(--lumo-border-radius-s);
+}
+
+.ai-md-content pre {
+    background-color: var(--lumo-contrast-10pct);
+    padding: var(--lumo-space-m);
+    border-radius: var(--lumo-border-radius-m);
+    overflow-x: auto;
+    margin: var(--lumo-space-s) 0;
+}
+
+.ai-md-content pre code {
+    background: none;
+    padding: 0;
+    font-size: var(--lumo-font-size-xs);
+}
+
+.ai-md-content h1, .ai-md-content h2, .ai-md-content h3 {
+    margin: var(--lumo-space-s) 0 var(--lumo-space-xs) 0;
+    font-weight: 600;
+    color: var(--lumo-primary-text-color);
+}
+
+.ai-md-content a {
+    color: var(--lumo-primary-color);
+    text-decoration: underline;
+}
